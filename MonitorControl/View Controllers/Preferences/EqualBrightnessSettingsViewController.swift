@@ -239,6 +239,7 @@ final class EqualBrightnessSettingsViewController: NSViewController {
   private var points: [EqualBrightnessCalibrationPoint] = []
   private var curveKind: EqualBrightnessCurveKind = .linear
   private var displayNames: [String] = []
+  private var displayObjects: [Display] = []
 
   /// Builds the settings view hierarchy using AppKit controls and Auto Layout.
   /// 使用 AppKit 控件和自动布局创建设置窗口的视图层级。
@@ -261,6 +262,7 @@ final class EqualBrightnessSettingsViewController: NSViewController {
     self.sourceSlider.action = #selector(self.sliderChanged(_:))
     self.targetSlider.target = self
     self.targetSlider.action = #selector(self.sliderChanged(_:))
+    self.loadWorkingCurveForSelectedDisplay()
 
     let addPointButton = NSButton(title: NSLocalizedString("Add Reference Point", comment: "Equal brightness add point button"), target: self, action: #selector(self.addReferencePoint(_:)))
     let removePointButton = NSButton(title: NSLocalizedString("Remove Last Point", comment: "Equal brightness remove point button"), target: self, action: #selector(self.removeLastPoint(_:)))
@@ -360,7 +362,8 @@ final class EqualBrightnessSettingsViewController: NSViewController {
   /// Loads display names while keeping the editor usable before display discovery completes.
   /// 读取显示器名称，并在显示器发现尚未完成时保持编辑器可用。
   private func loadDisplayNames() -> [String] {
-    let names = DisplayManager.shared.displays.map { $0.name }
+    self.displayObjects = DisplayManager.shared.displays
+    let names = self.displayObjects.map { $0.name }
     if names.isEmpty {
       return [NSLocalizedString("External Display", comment: "Fallback display name")]
     }
@@ -370,8 +373,34 @@ final class EqualBrightnessSettingsViewController: NSViewController {
   /// Handles a change to the selected target display.
   /// 处理目标显示器选择变化。
   @objc private func displayChanged(_: NSPopUpButton) {
-    self.points.removeAll()
+    self.loadWorkingCurveForSelectedDisplay()
     self.refreshGraph()
+  }
+
+  /// Returns the currently selected display object when display discovery supplied one.
+  /// 当显示器发现提供了对象时，返回当前选中的显示器对象。
+  private func selectedDisplay() -> Display? {
+    let index = self.displayPopup.indexOfSelectedItem
+    guard index >= 0, index < self.displayObjects.count else {
+      return nil
+    }
+    return self.displayObjects[index]
+  }
+
+  /// Loads the selected display curve into the editable working state.
+  /// 将当前显示器的已保存曲线加载到可编辑工作状态。
+  private func loadWorkingCurveForSelectedDisplay() {
+    guard let display = self.selectedDisplay(), let curve = EqualBrightnessSettingsStore.shared.curve(for: display) else {
+      self.points = []
+      self.curveKind = .linear
+      self.curvePopup.selectItem(at: 0)
+      return
+    }
+    self.points = curve.points
+    self.curveKind = curve.kind
+    if let index = EqualBrightnessCurveKind.allCases.firstIndex(of: curve.kind) {
+      self.curvePopup.selectItem(at: index)
+    }
   }
 
   /// Updates the working curve type without writing preferences.
@@ -413,6 +442,10 @@ final class EqualBrightnessSettingsViewController: NSViewController {
   /// Sends the working points to the window controller for the save transaction.
   /// 将工作参考点交给窗口控制器执行保存事务。
   @objc private func save(_: NSButton) {
+    let curve = EqualBrightnessCurve(kind: self.curveKind, points: self.points)
+    if let targetDisplay = self.selectedDisplay(), let referenceDisplay = DisplayManager.shared.getBuiltInDisplay() ?? DisplayManager.shared.getAppleDisplays().first {
+      _ = EqualBrightnessSettingsStore.shared.saveCurve(curve, for: targetDisplay, referenceDisplay: referenceDisplay)
+    }
     self.onSave?(self.points, self.curveKind)
     self.view.window?.close()
   }
@@ -427,7 +460,6 @@ final class EqualBrightnessSettingsViewController: NSViewController {
   /// Rebuilds the graph curves and the human-readable point summary.
   /// 重建图表曲线和可读的参考点摘要。
   private func refreshGraph() {
-    let selectedCurve = EqualBrightnessCurve(kind: self.curveKind, points: self.points)
     var curves: [EqualBrightnessGraphCurve] = [
       EqualBrightnessGraphCurve(
         title: NSLocalizedString("Mac Reference", comment: "Equal brightness reference curve"),
@@ -438,11 +470,19 @@ final class EqualBrightnessSettingsViewController: NSViewController {
     ]
     let palette: [NSColor] = [.systemOrange, .systemGreen, .systemPurple, .systemRed]
     for (index, name) in self.displayNames.enumerated() {
+      let curve: EqualBrightnessCurve
+      if index == self.displayPopup.indexOfSelectedItem {
+        curve = EqualBrightnessCurve(kind: self.curveKind, points: self.points)
+      } else if index < self.displayObjects.count, let savedCurve = EqualBrightnessSettingsStore.shared.curve(for: self.displayObjects[index]) {
+        curve = savedCurve
+      } else {
+        curve = EqualBrightnessCurve(kind: .linear, points: [])
+      }
       curves.append(
         EqualBrightnessGraphCurve(
           title: name,
           color: palette[index % palette.count],
-          evaluator: { selectedCurve.value(at: $0) },
+          evaluator: { curve.value(at: $0) },
           isReference: false
         )
       )

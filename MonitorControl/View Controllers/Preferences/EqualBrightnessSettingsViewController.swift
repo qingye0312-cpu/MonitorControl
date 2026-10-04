@@ -4,7 +4,7 @@ import Cocoa
 
 /// A manually calibrated reference pair between the Mac display and one target display.
 /// Mac 屏幕与目标显示器之间经过人工校准的一组参考点。
-struct EqualBrightnessCalibrationPoint: Identifiable {
+struct EqualBrightnessCalibrationPoint: Codable, Identifiable {
   let id: UUID
   var sourceValue: Double
   var targetValue: Double
@@ -20,7 +20,7 @@ struct EqualBrightnessCalibrationPoint: Identifiable {
 
 /// The first release keeps only monotonic curve choices that are safe to preview.
 /// 第一版只提供适合预览且不会产生越界的曲线类型。
-enum EqualBrightnessCurveKind: String, CaseIterable {
+enum EqualBrightnessCurveKind: String, Codable, CaseIterable {
   case linear
   case power
   case piecewiseLinear
@@ -41,7 +41,7 @@ enum EqualBrightnessCurveKind: String, CaseIterable {
 
 /// Describes one target display mapping from reference brightness to target brightness.
 /// 描述参考亮度到目标亮度映射的一条目标显示器曲线。
-struct EqualBrightnessCurve {
+struct EqualBrightnessCurve: Codable {
   var kind: EqualBrightnessCurveKind
   var points: [EqualBrightnessCalibrationPoint]
   var gamma: Double = 1

@@ -150,3 +150,20 @@
 
 /* Shown in the alert dialog */
 "You need to enable MonitorControl in System Settings > Security and Privacy > Accessibility for the keyboard shortcuts to work" = "You need to enable MonitorControl in System Settings > Security and Privacy > Accessibility for the keyboard shortcuts to work";
+
+/* Equal brightness settings */
+"Equal Brightness Settings" = "Equal Brightness Settings";
+"Linear" = "Linear";
+"Power" = "Power";
+"Piecewise Linear" = "Piecewise Linear";
+"Add Reference Point" = "Add Reference Point";
+"Remove Last Point" = "Remove Last Point";
+"Adjust both sliders until the displays look equally bright, then record the point." = "Adjust both sliders until the displays look equally bright, then record the point.";
+"Reference display brightness" = "Reference display brightness";
+"Target display brightness" = "Target display brightness";
+"Curve type" = "Curve type";
+"Cancel" = "Cancel";
+"Save" = "Save";
+"Target display" = "Target display";
+"Mac Reference" = "Mac Reference";
+"No reference points yet." = "No reference points yet.";

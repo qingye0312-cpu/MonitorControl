@@ -104,7 +104,7 @@
                                         <stackView distribution="fill" orientation="horizontal" alignment="centerY" spacing="8" translatesAutoresizingMaskIntoConstraints="NO" id="Jm8-7Q-cqP">
                                             <rect key="frame" x="218" y="344" width="472" height="32"/>
                                             <subviews>
-                                                <button key="contentView" horizontalHuggingPriority="250" horizontalCompressionResistancePriority="250" verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="DW6-ez-A8y">
+                                                <button horizontalHuggingPriority="250" horizontalCompressionResistancePriority="250" verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="DW6-ez-A8y">
                                                     <rect key="frame" x="0.0" y="7" width="332" height="18"/>
                                                     <buttonCell key="cell" type="check" title="Sync brightness changes from Built-in and Apple displays" bezelStyle="regularSquare" imagePosition="left" alignment="left" inset="2" id="0ca-DG-AgB">
                                                         <behavior key="behavior" changeContents="YES" doesNotDimImage="YES" lightByContents="YES"/>
@@ -114,7 +114,7 @@
                                                         <action selector="enableBrightnessSync:" target="BGD-tY-Myx" id="Icj-yj-at8"/>
                                                     </connections>
                                                 </button>
-                                                <button key="contentView" verticalHuggingPriority="750" placeholderIntrinsicWidth="132" placeholderIntrinsicHeight="20" translatesAutoresizingMaskIntoConstraints="NO" id="Y7p-qL-8mN">
+                                                <button verticalHuggingPriority="750" placeholderIntrinsicWidth="132" placeholderIntrinsicHeight="20" translatesAutoresizingMaskIntoConstraints="NO" id="Y7p-qL-8mN">
                                                     <rect key="frame" x="340" y="0.0" width="132" height="32"/>
                                                     <buttonCell key="cell" type="push" title="Equal Brightness Settings" bezelStyle="rounded" alignment="center" borderStyle="border" imageScaling="proportionallyDown" inset="2" id="K2x-9V-dsR">
                                                         <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>

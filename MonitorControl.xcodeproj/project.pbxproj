@@ -55,6 +55,7 @@
 		F03A8DF21FFBAA6F0034DC27 /* OtherDisplay.swift in Sources */ = {isa = PBXBuildFile; fileRef = F03A8DF11FFBAA6F0034DC27 /* OtherDisplay.swift */; };
 		D2C0A0012A00000100000001 /* EqualBrightnessSettingsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2C0A0012A00000100000002 /* EqualBrightnessSettingsViewController.swift */; };
 		D2C0A0012A00000100000003 /* EqualBrightnessSettingsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2C0A0012A00000100000004 /* EqualBrightnessSettingsStore.swift */; };
+		D2C0A0012A00000100000005 /* EqualBrightnessSyncCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2C0A0012A00000100000006 /* EqualBrightnessSyncCoordinator.swift */; };
 		F0445D3820023E710025AE82 /* MainPrefsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0445D3720023E710025AE82 /* MainPrefsViewController.swift */; };
 		F06792EA200A73460066C438 /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = F06792E9200A73460066C438 /* main.swift */; };
 		F06792F6200A745F0066C438 /* MonitorControlHelper.app in [Login] Copy Helper to start at Login */ = {isa = PBXBuildFile; fileRef = F06792E7200A73460066C438 /* MonitorControlHelper.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
@@ -176,6 +177,7 @@
 		F03A8DF11FFBAA6F0034DC27 /* OtherDisplay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OtherDisplay.swift; sourceTree = "<group>"; };
 		D2C0A0012A00000100000002 /* EqualBrightnessSettingsViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EqualBrightnessSettingsViewController.swift; sourceTree = "<group>"; };
 		D2C0A0012A00000100000004 /* EqualBrightnessSettingsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EqualBrightnessSettingsStore.swift; sourceTree = "<group>"; };
+		D2C0A0012A00000100000006 /* EqualBrightnessSyncCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EqualBrightnessSyncCoordinator.swift; sourceTree = "<group>"; };
 		F0445D3720023E710025AE82 /* MainPrefsViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainPrefsViewController.swift; sourceTree = "<group>"; };
 		F06792E7200A73460066C438 /* MonitorControlHelper.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MonitorControlHelper.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		F06792E9200A73460066C438 /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
@@ -361,6 +363,7 @@
 				F0445D3720023E710025AE82 /* MainPrefsViewController.swift */,
 				D2C0A0012A00000100000002 /* EqualBrightnessSettingsViewController.swift */,
 				D2C0A0012A00000100000004 /* EqualBrightnessSettingsStore.swift */,
+				D2C0A0012A00000100000006 /* EqualBrightnessSyncCoordinator.swift */,
 				AA25F6CE26E680510087F3A2 /* MenuslidersPrefsViewController.swift */,
 				AA25F6D026E681D30087F3A2 /* KeyboardPrefsViewController.swift */,
 				AA062E8926C9A039007E628C /* DisplaysPrefsViewController.swift */,
@@ -653,6 +656,7 @@
 				6C85EFDA22C941B000227EA1 /* DisplayManager.swift in Sources */,
 				D2C0A0012A00000100000001 /* EqualBrightnessSettingsViewController.swift in Sources */,
 				D2C0A0012A00000100000003 /* EqualBrightnessSettingsStore.swift in Sources */,
+				D2C0A0012A00000100000005 /* EqualBrightnessSyncCoordinator.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

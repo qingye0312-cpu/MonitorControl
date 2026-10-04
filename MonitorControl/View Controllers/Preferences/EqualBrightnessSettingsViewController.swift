@@ -468,7 +468,7 @@ final class EqualBrightnessSettingsWindowController: NSWindowController, NSWindo
 
   /// Creates a resizable AppKit settings window with the functional editor view.
   /// 创建一个可调整大小、包含功能编辑器视图的 AppKit 设置窗口。
-  convenience init() {
+  init() {
     let viewController = EqualBrightnessSettingsViewController()
     let window = NSWindow(
       contentRect: NSRect(x: 0, y: 0, width: 760, height: 560),
@@ -478,7 +478,7 @@ final class EqualBrightnessSettingsWindowController: NSWindowController, NSWindo
     )
     window.contentViewController = viewController
     window.title = NSLocalizedString("Equal Brightness Settings", comment: "Equal brightness window title")
-    self.init(window: window)
+    super.init(window: window)
     window.delegate = self
     viewController.onSave = { [weak self] points, curveKind in
       self?.didFinish = true

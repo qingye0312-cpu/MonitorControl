@@ -28,6 +28,8 @@ class MainPrefsViewController: NSViewController, SettingsPane {
   @IBOutlet var rowWriteStartupText: NSGridRow!
   @IBOutlet var rowReadStartupText: NSGridRow!
 
+  private var equalBrightnessSettingsWindowController: EqualBrightnessSettingsWindowController?
+
   func updateGridLayout() {
     if self.startupAction.selectedTag() == StartupAction.doNothing.rawValue {
       self.rowDoNothingStartupText.isHidden = false
@@ -138,6 +140,24 @@ class MainPrefsViewController: NSViewController, SettingsPane {
       prefs.set(false, forKey: PrefKey.enableBrightnessSync.rawValue)
     default: break
     }
+  }
+
+  /// Opens the function-based equal-brightness editor without changing legacy sync settings.
+  /// 打开函数化的等亮度编辑器，同时不改变原有同步设置。
+  @IBAction func equalBrightnessSettingsClicked(_: NSButton) {
+    if let existingController = self.equalBrightnessSettingsWindowController {
+      existingController.showSettings()
+      return
+    }
+    let controller = EqualBrightnessSettingsWindowController()
+    controller.onSave = { [weak self] _, _ in
+      self?.equalBrightnessSettingsWindowController = nil
+    }
+    controller.onCancel = { [weak self] in
+      self?.equalBrightnessSettingsWindowController = nil
+    }
+    self.equalBrightnessSettingsWindowController = controller
+    controller.showSettings()
   }
 
   @IBAction func startupAction(_ sender: NSPopUpButton) {

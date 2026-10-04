@@ -22,7 +22,8 @@ class MainPrefsViewController: NSViewController, SettingsPane {
   @IBOutlet var allowZeroSwBrightness: NSButton!
   @IBOutlet var combinedBrightness: NSButton!
   @IBOutlet var enableSmooth: NSButton!
-  @IBOutlet var enableBrightnessSync: NSButton!
+  @IBOutlet var enableBrightnessSync: NSButton?
+  @IBOutlet var enableBrightnessSyncControls: NSStackView?
   @IBOutlet var startupAction: NSPopUpButton!
   @IBOutlet var rowDoNothingStartupText: NSGridRow!
   @IBOutlet var rowWriteStartupText: NSGridRow!
@@ -61,7 +62,8 @@ class MainPrefsViewController: NSViewController, SettingsPane {
     self.combinedBrightness.state = prefs.bool(forKey: PrefKey.disableCombinedBrightness.rawValue) ? .off : .on
     self.allowZeroSwBrightness.state = prefs.bool(forKey: PrefKey.allowZeroSwBrightness.rawValue) ? .on : .off
     self.enableSmooth.state = prefs.bool(forKey: PrefKey.disableSmoothBrightness.rawValue) ? .off : .on
-    self.enableBrightnessSync.state = prefs.bool(forKey: PrefKey.enableBrightnessSync.rawValue) ? .on : .off
+    let syncButton = self.enableBrightnessSync ?? self.enableBrightnessSyncControls?.arrangedSubviews.compactMap { $0 as? NSButton }.first
+    syncButton?.state = prefs.bool(forKey: PrefKey.enableBrightnessSync.rawValue) ? .on : .off
     self.startupAction.selectItem(withTag: prefs.integer(forKey: PrefKey.startupAction.rawValue))
     // Preload Display settings to some extent to properly set up size in orther that animation won't fail
     menuslidersPrefsVc?.view.layoutSubtreeIfNeeded()

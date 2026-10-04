@@ -314,6 +314,7 @@
                         <outlet property="automaticUpdateCheck" destination="79h-9d-Iwx" id="qjo-gL-f1w"/>
                         <outlet property="combinedBrightness" destination="HqE-17-9wg" id="jyF-r9-cDY"/>
                         <outlet property="enableBrightnessSync" destination="DW6-ez-A8y" id="2ay-8g-h1v"/>
+                        <outlet property="enableBrightnessSyncControls" destination="Jm8-7Q-cqP" id="v9h-3L-mQ2"/>
                         <outlet property="enableSmooth" destination="7cl-Ma-fc4" id="jJE-mj-5v2"/>
                         <outlet property="rowDoNothingStartupText" destination="0ue-QI-RgH" id="kR9-4i-WDN"/>
                         <outlet property="rowReadStartupText" destination="UAP-kZ-c0z" id="0KO-oS-mhB"/>

@@ -235,6 +235,14 @@ final class EqualBrightnessGraphView: NSView {
     }
   }
 
+  /// Uses the selected target display color for its calibration markers.
+  /// 使用当前选中目标显示器的颜色绘制校准点。
+  var pointColor: NSColor = .systemOrange {
+    didSet {
+      self.needsDisplay = true
+    }
+  }
+
   var onPointSelected: ((UUID?) -> Void)?
 
   /// Keeps graph coordinates readable in both light and dark appearances.
@@ -340,7 +348,7 @@ final class EqualBrightnessGraphView: NSView {
       selection.stroke()
     }
     let marker = NSBezierPath(ovalIn: NSRect(x: center.x - 4, y: center.y - 4, width: 8, height: 8))
-    NSColor.systemOrange.setFill()
+    self.pointColor.setFill()
     marker.fill()
     NSColor.labelColor.setStroke()
     marker.lineWidth = 1
@@ -385,8 +393,284 @@ final class EqualBrightnessGraphView: NSView {
 /// Keeps the editor's content dimensions in one place so the view and window stay in sync.
 /// 集中管理编辑器内容尺寸，确保视图和窗口尺寸保持一致。
 private enum EqualBrightnessSettingsLayout {
-  static let contentSize = NSSize(width: 760, height: 720)
+  static let contentSize = NSSize(width: 760, height: 800)
+  static let minimumContentSize = NSSize(width: 680, height: 760)
+  static let contentInset: CGFloat = 24
+  static let sectionSpacing: CGFloat = 16
+  static let headerHeight: CGFloat = 32
   static let graphHeight: CGFloat = 300
+  static let summaryHeight: CGFloat = 128
+  static let footerHeight: CGFloat = 32
+}
+
+/// Lays out one slider row with a shared label column and track origin.
+/// 使用统一的标签列和滑块起点布局一行亮度滑块。
+private final class EqualBrightnessAlignedSliderRow: NSView {
+  static let labelColumnWidth: CGFloat = 190
+
+  let label: NSTextField
+  let slider: NSSlider
+
+  init(label: NSTextField, slider: NSSlider) {
+    self.label = label
+    self.slider = slider
+    super.init(frame: .zero)
+    self.label.lineBreakMode = .byTruncatingTail
+    self.addSubview(label)
+    self.addSubview(slider)
+  }
+
+  required init?(coder: NSCoder) {
+    fatalError("EqualBrightnessAlignedSliderRow does not support storyboard decoding")
+  }
+
+  override var isFlipped: Bool {
+    true
+  }
+
+  override func layout() {
+    super.layout()
+    let labelWidth = Self.labelColumnWidth
+    let sliderX = labelWidth + 12
+    let sliderHeight: CGFloat = 24
+    self.label.frame = NSRect(x: 0, y: 0, width: labelWidth, height: self.bounds.height)
+    self.slider.frame = NSRect(
+      x: sliderX,
+      y: max(0, (self.bounds.height - sliderHeight) / 2),
+      width: max(0, self.bounds.width - sliderX),
+      height: sliderHeight
+    )
+  }
+}
+
+/// Lays out a labeled control using the same column as the live sliders.
+/// 使用与实时滑块相同的标签列布局带标签控件。
+private final class EqualBrightnessAlignedControlRow: NSView {
+  private let label: NSTextField
+  private let control: NSView
+
+  init(label: NSTextField, control: NSView) {
+    self.label = label
+    self.control = control
+    super.init(frame: .zero)
+    self.label.lineBreakMode = .byTruncatingTail
+    self.addSubview(label)
+    self.addSubview(control)
+  }
+
+  required init?(coder: NSCoder) {
+    fatalError("EqualBrightnessAlignedControlRow does not support storyboard decoding")
+  }
+
+  override var isFlipped: Bool {
+    true
+  }
+
+  override func layout() {
+    super.layout()
+    let labelWidth = EqualBrightnessAlignedSliderRow.labelColumnWidth
+    let controlX = labelWidth + 12
+    self.label.frame = NSRect(x: 0, y: 0, width: labelWidth, height: self.bounds.height)
+    self.control.frame = NSRect(
+      x: controlX,
+      y: max(0, (self.bounds.height - 28) / 2),
+      width: max(0, self.bounds.width - controlX),
+      height: 28
+    )
+  }
+}
+
+/// Owns the calibration controls and keeps all live sliders aligned.
+/// 管理校准控件，并确保所有实时滑块对齐。
+private final class EqualBrightnessCalibrationControlsView: NSView {
+  private let sliderRows: [EqualBrightnessAlignedSliderRow]
+  private let curveRow: EqualBrightnessAlignedControlRow
+  private let addButton: NSButton
+  private let removeButton: NSButton
+
+  init(sliderRows: [EqualBrightnessAlignedSliderRow], curveRow: EqualBrightnessAlignedControlRow, addButton: NSButton, removeButton: NSButton) {
+    self.sliderRows = sliderRows
+    self.curveRow = curveRow
+    self.addButton = addButton
+    self.removeButton = removeButton
+    super.init(frame: .zero)
+    for row in sliderRows {
+      self.addSubview(row)
+    }
+    self.addSubview(curveRow)
+    self.addSubview(addButton)
+    self.addSubview(removeButton)
+  }
+
+  required init?(coder: NSCoder) {
+    fatalError("EqualBrightnessCalibrationControlsView does not support storyboard decoding")
+  }
+
+  override var isFlipped: Bool {
+    true
+  }
+
+  /// Returns the exact height needed for all display sliders and actions.
+  /// 返回所有显示器滑块和操作按钮所需的准确高度。
+  var contentHeight: CGFloat {
+    let rowHeight: CGFloat = 32
+    let rowSpacing: CGFloat = 8
+    return CGFloat(self.sliderRows.count + 2) * rowHeight + CGFloat(self.sliderRows.count + 1) * rowSpacing
+  }
+
+  override func layout() {
+    super.layout()
+    let rowHeight: CGFloat = 32
+    let rowSpacing: CGFloat = 8
+    for (index, row) in self.sliderRows.enumerated() {
+      row.frame = NSRect(x: 0, y: CGFloat(index) * (rowHeight + rowSpacing), width: self.bounds.width, height: rowHeight)
+    }
+    let curveY = CGFloat(self.sliderRows.count) * (rowHeight + rowSpacing)
+    self.curveRow.frame = NSRect(x: 0, y: curveY, width: self.bounds.width, height: rowHeight)
+    let buttonY = curveY + rowHeight + rowSpacing
+    self.addButton.frame = NSRect(x: 0, y: buttonY, width: max(132, self.addButton.fittingSize.width), height: rowHeight)
+    self.removeButton.frame = NSRect(x: self.addButton.frame.maxX + rowSpacing, y: buttonY, width: max(190, self.removeButton.fittingSize.width), height: rowHeight)
+  }
+}
+
+/// Places the target-display selector without relying on the host preferences layout.
+/// 独立放置目标显示器选择器，不依赖宿主偏好设置页面布局。
+private final class EqualBrightnessDisplaySelectorView: NSView {
+  private let label: NSTextField
+  private let popup: NSPopUpButton
+
+  init(label: NSTextField, popup: NSPopUpButton) {
+    self.label = label
+    self.popup = popup
+    super.init(frame: .zero)
+    self.label.lineBreakMode = .byTruncatingTail
+    self.addSubview(label)
+    self.addSubview(popup)
+  }
+
+  required init?(coder: NSCoder) {
+    fatalError("EqualBrightnessDisplaySelectorView does not support storyboard decoding")
+  }
+
+  override var isFlipped: Bool {
+    true
+  }
+
+  override func layout() {
+    super.layout()
+    let labelWidth = EqualBrightnessAlignedSliderRow.labelColumnWidth
+    let popupX = labelWidth + 12
+    self.label.frame = NSRect(x: 0, y: 0, width: labelWidth, height: self.bounds.height)
+    self.popup.frame = NSRect(x: popupX, y: 0, width: min(260, max(220, self.bounds.width - popupX)), height: 28)
+  }
+}
+
+/// Places Cancel and Save at the bottom-right of the standalone page.
+/// 将“取消”和“保存”固定在独立页面右下角。
+private final class EqualBrightnessActionBar: NSView {
+  private let cancelButton: NSButton
+  private let saveButton: NSButton
+
+  init(cancelButton: NSButton, saveButton: NSButton) {
+    self.cancelButton = cancelButton
+    self.saveButton = saveButton
+    super.init(frame: .zero)
+    self.addSubview(cancelButton)
+    self.addSubview(saveButton)
+  }
+
+  required init?(coder: NSCoder) {
+    fatalError("EqualBrightnessActionBar does not support storyboard decoding")
+  }
+
+  override var isFlipped: Bool {
+    true
+  }
+
+  override func layout() {
+    super.layout()
+    let spacing: CGFloat = 12
+    let buttonHeight: CGFloat = 32
+    let saveWidth = max(88, self.saveButton.fittingSize.width)
+    let cancelWidth = max(88, self.cancelButton.fittingSize.width)
+    self.saveButton.frame = NSRect(x: self.bounds.width - saveWidth, y: 0, width: saveWidth, height: buttonHeight)
+    self.cancelButton.frame = NSRect(x: self.saveButton.frame.minX - spacing - cancelWidth, y: 0, width: cancelWidth, height: buttonHeight)
+  }
+}
+
+/// Provides a complete standalone page with explicit top-to-bottom frames.
+/// 提供使用明确上下位置的完整独立页面。
+private final class EqualBrightnessSettingsPageView: NSView {
+  private let displaySelector: EqualBrightnessDisplaySelectorView
+  private let graphView: EqualBrightnessGraphView
+  private let controlsView: EqualBrightnessCalibrationControlsView
+  private let pointsSummary: NSTextField
+  private let actionBar: EqualBrightnessActionBar
+
+  init(displaySelector: EqualBrightnessDisplaySelectorView, graphView: EqualBrightnessGraphView, controlsView: EqualBrightnessCalibrationControlsView, pointsSummary: NSTextField, actionBar: EqualBrightnessActionBar) {
+    self.displaySelector = displaySelector
+    self.graphView = graphView
+    self.controlsView = controlsView
+    self.pointsSummary = pointsSummary
+    self.actionBar = actionBar
+    super.init(frame: NSRect(origin: .zero, size: EqualBrightnessSettingsLayout.contentSize))
+    self.autoresizingMask = [.width, .height]
+    self.addSubview(displaySelector)
+    self.addSubview(graphView)
+    self.addSubview(controlsView)
+    self.addSubview(pointsSummary)
+    self.addSubview(actionBar)
+  }
+
+  required init?(coder: NSCoder) {
+    fatalError("EqualBrightnessSettingsPageView does not support storyboard decoding")
+  }
+
+  override var isFlipped: Bool {
+    true
+  }
+
+  /// Calculates the minimum content height for the discovered display count.
+  /// 根据当前发现的显示器数量计算页面所需的最小内容高度。
+  var requiredContentHeight: CGFloat {
+    let sectionCount = 5
+    return EqualBrightnessSettingsLayout.contentInset * 2
+      + EqualBrightnessSettingsLayout.headerHeight
+      + EqualBrightnessSettingsLayout.graphHeight
+      + self.controlsView.contentHeight
+      + EqualBrightnessSettingsLayout.summaryHeight
+      + EqualBrightnessSettingsLayout.footerHeight
+      + CGFloat(sectionCount - 1) * EqualBrightnessSettingsLayout.sectionSpacing
+  }
+
+  override func layout() {
+    super.layout()
+    let inset = EqualBrightnessSettingsLayout.contentInset
+    let spacing = EqualBrightnessSettingsLayout.sectionSpacing
+    let width = max(0, self.bounds.width - inset * 2)
+    var y = inset
+
+    // Keep the graph as the first content block, directly below the window title bar.
+    // 将曲线图作为第一个内容区块，直接放在窗口标题栏下方。
+    self.graphView.frame = NSRect(x: inset, y: y, width: width, height: EqualBrightnessSettingsLayout.graphHeight)
+    y += EqualBrightnessSettingsLayout.graphHeight + spacing
+
+    self.displaySelector.frame = NSRect(x: inset, y: y, width: width, height: EqualBrightnessSettingsLayout.headerHeight)
+    y += EqualBrightnessSettingsLayout.headerHeight + spacing
+
+    let controlsHeight = self.controlsView.contentHeight
+    self.controlsView.frame = NSRect(x: inset, y: y, width: width, height: controlsHeight)
+    y += controlsHeight + spacing
+
+    // Keep the point summary and usage guidance together immediately before the actions.
+    // 将参考点摘要和使用提示作为同一个文本区块，放在操作按钮之前。
+    let minimumFooterY = y + spacing + EqualBrightnessSettingsLayout.summaryHeight + spacing
+    let footerY = max(minimumFooterY, self.bounds.height - inset - EqualBrightnessSettingsLayout.footerHeight)
+    let summaryY = footerY - spacing - EqualBrightnessSettingsLayout.summaryHeight
+    self.pointsSummary.frame = NSRect(x: inset, y: summaryY, width: width, height: EqualBrightnessSettingsLayout.summaryHeight)
+    self.pointsSummary.preferredMaxLayoutWidth = width
+    self.actionBar.frame = NSRect(x: inset, y: footerY, width: width, height: EqualBrightnessSettingsLayout.footerHeight)
+  }
 }
 
 /// Hosts the first functional equal-brightness editor window.
@@ -398,11 +682,24 @@ final class EqualBrightnessSettingsViewController: NSViewController {
   private let graphView = EqualBrightnessGraphView(frame: .zero)
   private let displayPopup = NSPopUpButton(frame: .zero, pullsDown: false)
   private let curvePopup = NSPopUpButton(frame: .zero, pullsDown: false)
-  private let sourceSlider = NSSlider(value: 0.5, minValue: 0, maxValue: 1, target: nil, action: nil)
-  private let targetSlider = NSSlider(value: 0.5, minValue: 0, maxValue: 1, target: nil, action: nil)
-  private let sourceBrightnessLabel = NSTextField(labelWithString: "")
-  private let targetBrightnessLabel = NSTextField(labelWithString: "")
   private let pointsSummary = NSTextField(labelWithString: "")
+  private let targetDisplayColors: [NSColor] = [
+    .systemOrange,
+    .systemGreen,
+    .systemPurple,
+    .systemRed,
+    .systemPink,
+    .systemTeal,
+    .systemYellow,
+    .systemIndigo,
+    .systemBrown,
+    .systemMint,
+    .systemCyan
+  ]
+  private var liveSliderRows: [EqualBrightnessAlignedSliderRow] = []
+  private var sliderDisplays: [ObjectIdentifier: Display] = [:]
+  private var slidersByDisplayID: [CGDirectDisplayID: NSSlider] = [:]
+  private var displayColors: [CGDirectDisplayID: NSColor] = [:]
   private var removePointButton: NSButton?
   private var points: [EqualBrightnessCalibrationPoint] = []
   private var curveKind: EqualBrightnessCurveKind = .monotoneCubic
@@ -411,26 +708,27 @@ final class EqualBrightnessSettingsViewController: NSViewController {
   private var referenceDisplay: Display?
   private var selectedPointID: UUID?
 
-  /// Builds the settings view hierarchy using AppKit controls and Auto Layout.
-  /// 使用 AppKit 控件和自动布局创建设置窗口的视图层级。
+  /// Builds the standalone page without inheriting layout from the host preferences window.
+  /// 创建独立页面，不继承宿主偏好设置窗口的布局。
   override func loadView() {
-    let rootView = NSView(frame: NSRect(origin: .zero, size: EqualBrightnessSettingsLayout.contentSize))
     self.configureInteractiveControls()
 
-    let titleLabel = self.makeTitleLabel()
-    let instructionLabel = self.makeInstructionLabel()
     let header = self.makeDisplayHeader()
-    let graphContainer = self.makeGraphContainer()
     let controls = self.makeCalibrationControls()
     let footer = self.makeFooter()
-    let rootStack = self.makeRootStack(views: [titleLabel, instructionLabel, header, graphContainer, controls, self.pointsSummary, footer])
-    rootView.addSubview(rootStack)
-    self.constrainRootStack(rootStack, in: rootView, titleLabel: titleLabel, instructionLabel: instructionLabel, header: header, graphContainer: graphContainer, footer: footer)
+    let rootView = EqualBrightnessSettingsPageView(
+      displaySelector: header,
+      graphView: self.graphView,
+      controlsView: controls,
+      pointsSummary: self.pointsSummary,
+      actionBar: footer
+    )
 
     // Keep graph selection in the view controller so button state follows the selected point.
     // 将图表选中状态交给视图控制器管理，使按钮状态随选中点更新。
     self.graphView.onPointSelected = { [weak self] pointID in
       self?.selectedPointID = pointID
+      self?.applySelectedPointToAllDisplays()
       self?.updateRemovePointButtonState()
       self?.graphView.selectedPointID = pointID
     }
@@ -454,146 +752,58 @@ final class EqualBrightnessSettingsViewController: NSViewController {
     self.curvePopup.target = self
     self.curvePopup.action = #selector(self.curveChanged(_:))
 
-    self.sourceSlider.target = self
-    self.sourceSlider.action = #selector(self.sliderChanged(_:))
-    self.targetSlider.target = self
-    self.targetSlider.action = #selector(self.sliderChanged(_:))
-
     self.pointsSummary.font = NSFont.monospacedDigitSystemFont(ofSize: NSFont.smallSystemFontSize, weight: .regular)
     self.pointsSummary.textColor = .secondaryLabelColor
     self.pointsSummary.lineBreakMode = .byWordWrapping
-    self.pointsSummary.maximumNumberOfLines = 3
+    self.pointsSummary.maximumNumberOfLines = 0
+    self.pointsSummary.usesSingleLineMode = false
+    self.pointsSummary.cell?.wraps = true
+    self.pointsSummary.cell?.isScrollable = false
   }
 
-  /// Creates the editor title shown above the usage instructions.
-  /// 创建显示在使用说明上方的编辑器标题。
-  private func makeTitleLabel() -> NSTextField {
-    let titleLabel = NSTextField(labelWithString: NSLocalizedString("Equal Brightness Settings", comment: "Equal brightness window title"))
-    titleLabel.font = NSFont.boldSystemFont(ofSize: 18)
-    titleLabel.setContentHuggingPriority(.required, for: .vertical)
-    titleLabel.setContentCompressionResistancePriority(.required, for: .vertical)
-    return titleLabel
-  }
-
-  /// Creates the detailed bilingual-ready usage label that stays at the top of the page.
-  /// 创建位于页面顶部的详细使用说明标签，并支持本地化双语内容。
-  private func makeInstructionLabel() -> NSTextField {
-    let instructionLabel = NSTextField(labelWithString: NSLocalizedString("Equal brightness instructions", comment: "Equal brightness usage instructions"))
-    instructionLabel.textColor = .secondaryLabelColor
-    instructionLabel.lineBreakMode = .byWordWrapping
-    instructionLabel.maximumNumberOfLines = 0
-    instructionLabel.usesSingleLineMode = false
-    instructionLabel.preferredMaxLayoutWidth = 680
-    instructionLabel.setContentHuggingPriority(.required, for: .vertical)
-    instructionLabel.setContentCompressionResistancePriority(.required, for: .vertical)
-    return instructionLabel
-  }
-
-  /// Embeds the graph view and gives it a stable height for readable calibration points.
-  /// 嵌入曲线图视图，并设置稳定高度以保证校准点清晰可读。
-  private func makeGraphContainer() -> NSView {
-    let graphContainer = NSView(frame: .zero)
-    graphContainer.addSubview(self.graphView)
-    self.graphView.translatesAutoresizingMaskIntoConstraints = false
-    NSLayoutConstraint.activate([
-      self.graphView.leadingAnchor.constraint(equalTo: graphContainer.leadingAnchor),
-      self.graphView.trailingAnchor.constraint(equalTo: graphContainer.trailingAnchor),
-      self.graphView.topAnchor.constraint(equalTo: graphContainer.topAnchor),
-      self.graphView.bottomAnchor.constraint(equalTo: graphContainer.bottomAnchor),
-      graphContainer.heightAnchor.constraint(equalToConstant: EqualBrightnessSettingsLayout.graphHeight)
-    ])
-    return graphContainer
-  }
-
-  /// Creates the sliders, curve selector, and reference-point actions as one control group.
-  /// 将两个滑块、曲线选择器和参考点操作组合成一个控件组。
-  private func makeCalibrationControls() -> NSStackView {
+  /// Creates one aligned live slider per discovered display plus the calibration actions.
+  /// 为发现到的每台显示器创建一个对齐的实时滑块，并创建校准操作。
+  private func makeCalibrationControls() -> EqualBrightnessCalibrationControlsView {
     let addPointButton = NSButton(title: NSLocalizedString("Add Reference Point", comment: "Equal brightness add point button"), target: self, action: #selector(self.addReferencePoint(_:)))
     let removePointButton = NSButton(title: NSLocalizedString("Delete Selected Point", comment: "Equal brightness delete point button"), target: self, action: #selector(self.removeSelectedPoint(_:)))
     self.removePointButton = removePointButton
-
-    let actionRow = NSStackView(views: [addPointButton, removePointButton])
-    actionRow.orientation = .horizontal
-    actionRow.alignment = .centerY
-    actionRow.spacing = 8
-
-    let controls = NSStackView(views: [
-      self.makeRow(labelView: self.sourceBrightnessLabel, control: self.sourceSlider),
-      self.makeRow(labelView: self.targetBrightnessLabel, control: self.targetSlider),
-      self.makeRow(label: NSLocalizedString("Curve type", comment: "Equal brightness curve selector label"), control: self.curvePopup),
-      actionRow
-    ])
-    controls.orientation = .vertical
-    controls.alignment = .leading
-    controls.spacing = 8
-    return controls
+    let curveLabel = NSTextField(labelWithString: NSLocalizedString("Curve type", comment: "Equal brightness curve selector label"))
+    let curveRow = EqualBrightnessAlignedControlRow(label: curveLabel, control: self.curvePopup)
+    let displays = ([self.referenceDisplay] + self.displayObjects).compactMap { $0 }
+    self.liveSliderRows = displays.map { display in
+      let slider = NSSlider(value: self.currentBrightness(for: display), minValue: 0, maxValue: 1, target: self, action: #selector(self.sliderChanged(_:)))
+      slider.isContinuous = true
+      let targetIndex = self.displayObjects.firstIndex(where: { $0.identifier == display.identifier }) ?? 0
+      let color = display == self.referenceDisplay ? NSColor.systemBlue : self.color(for: display, targetIndex: targetIndex)
+      slider.trackFillColor = color
+      let label = NSTextField(labelWithString: "")
+      self.sliderDisplays[ObjectIdentifier(slider)] = display
+      self.slidersByDisplayID[display.identifier] = slider
+      return EqualBrightnessAlignedSliderRow(label: label, slider: slider)
+    }
+    return EqualBrightnessCalibrationControlsView(
+      sliderRows: self.liveSliderRows,
+      curveRow: curveRow,
+      addButton: addPointButton,
+      removeButton: removePointButton
+    )
   }
 
-  /// Creates the target-display selector row.
-  /// 创建目标显示器选择行。
-  private func makeDisplayHeader() -> NSStackView {
-    let header = NSStackView(views: [
-      NSTextField(labelWithString: NSLocalizedString("Target display", comment: "Equal brightness target display label")),
-      self.displayPopup
-    ])
-    header.orientation = .horizontal
-    header.alignment = .centerY
-    header.spacing = 8
-    header.setContentHuggingPriority(.required, for: .vertical)
-    header.setContentCompressionResistancePriority(.required, for: .vertical)
-    return header
+  /// Creates the target-display selector using the same fixed label column as the sliders.
+  /// 使用与滑块相同的固定标签列创建目标显示器选择器。
+  private func makeDisplayHeader() -> EqualBrightnessDisplaySelectorView {
+    let label = NSTextField(labelWithString: NSLocalizedString("Target display", comment: "Equal brightness target display label"))
+    return EqualBrightnessDisplaySelectorView(label: label, popup: self.displayPopup)
   }
 
-  /// Creates Save and Cancel actions and assigns their standard keyboard shortcuts.
-  /// 创建“保存”和“取消”操作，并设置标准键盘快捷键。
-  private func makeFooter() -> NSStackView {
-    let footer = NSStackView()
-    footer.orientation = .horizontal
-    footer.alignment = .centerY
-    footer.spacing = 8
+  /// Creates Save and Cancel actions with a stable bottom-right layout.
+  /// 创建具有稳定右下角布局的“保存”和“取消”操作。
+  private func makeFooter() -> EqualBrightnessActionBar {
     let cancelButton = NSButton(title: NSLocalizedString("Cancel", comment: "Equal brightness cancel button"), target: self, action: #selector(self.cancel(_:)))
     let saveButton = NSButton(title: NSLocalizedString("Save", comment: "Equal brightness save button"), target: self, action: #selector(self.save(_:)))
     saveButton.keyEquivalent = "\r"
     cancelButton.keyEquivalent = "\u{1b}"
-    footer.addArrangedSubview(NSView())
-    footer.addArrangedSubview(cancelButton)
-    footer.addArrangedSubview(saveButton)
-    return footer
-  }
-
-  /// Creates the vertical page stack with consistent insets and spacing.
-  /// 创建带统一边距和间距的纵向页面栈。
-  private func makeRootStack(views: [NSView]) -> NSStackView {
-    let rootStack = NSStackView(views: views)
-    rootStack.orientation = .vertical
-    rootStack.alignment = .leading
-    rootStack.distribution = .fill
-    rootStack.spacing = 12
-    rootStack.edgeInsets = NSEdgeInsets(top: 20, left: 20, bottom: 20, right: 20)
-    rootStack.translatesAutoresizingMaskIntoConstraints = false
-    return rootStack
-  }
-
-  /// Pins the page stack and width constraints required by the AppKit controls.
-  /// 固定页面栈，并设置 AppKit 控件所需的宽度约束。
-  private func constrainRootStack(_ rootStack: NSStackView, in rootView: NSView, titleLabel: NSTextField, instructionLabel: NSTextField, header: NSStackView, graphContainer: NSView, footer: NSStackView) {
-    NSLayoutConstraint.activate([
-      rootStack.leadingAnchor.constraint(equalTo: rootView.leadingAnchor),
-      rootStack.trailingAnchor.constraint(equalTo: rootView.trailingAnchor),
-      rootStack.topAnchor.constraint(equalTo: rootView.topAnchor),
-      rootStack.bottomAnchor.constraint(equalTo: rootView.bottomAnchor),
-      titleLabel.heightAnchor.constraint(greaterThanOrEqualToConstant: 24),
-      instructionLabel.heightAnchor.constraint(greaterThanOrEqualToConstant: 44),
-      header.heightAnchor.constraint(greaterThanOrEqualToConstant: 28),
-      self.displayPopup.widthAnchor.constraint(greaterThanOrEqualToConstant: 240),
-      self.curvePopup.widthAnchor.constraint(greaterThanOrEqualToConstant: 180),
-      self.sourceSlider.widthAnchor.constraint(greaterThanOrEqualToConstant: 260),
-      self.targetSlider.widthAnchor.constraint(greaterThanOrEqualToConstant: 260),
-      footer.widthAnchor.constraint(equalTo: rootStack.widthAnchor, constant: -40),
-      graphContainer.widthAnchor.constraint(equalTo: rootStack.widthAnchor, constant: -40),
-      instructionLabel.widthAnchor.constraint(equalTo: rootStack.widthAnchor, constant: -40),
-      self.pointsSummary.widthAnchor.constraint(equalTo: rootStack.widthAnchor, constant: -40)
-    ])
+    return EqualBrightnessActionBar(cancelButton: cancelButton, saveButton: saveButton)
   }
 
   /// Refreshes the graph after the view has been loaded.
@@ -601,24 +811,6 @@ final class EqualBrightnessSettingsViewController: NSViewController {
   override func viewDidLoad() {
     super.viewDidLoad()
     self.refreshGraph()
-  }
-
-  /// Creates one labeled horizontal control row.
-  /// 创建一个带标签的水平控件行。
-  private func makeRow(label: String, control: NSView) -> NSStackView {
-    let labelView = NSTextField(labelWithString: label)
-    return self.makeRow(labelView: labelView, control: control)
-  }
-
-  /// Creates one labeled row using a reusable label for display-name updates.
-  /// 使用可复用标签创建一行控件，以便动态更新显示器名称。
-  private func makeRow(labelView: NSTextField, control: NSView) -> NSStackView {
-    labelView.setContentHuggingPriority(.required, for: .horizontal)
-    let row = NSStackView(views: [labelView, control])
-    row.orientation = .horizontal
-    row.alignment = .centerY
-    row.spacing = 8
-    return row
   }
 
   /// Loads display names while keeping the editor usable before display discovery completes.
@@ -659,21 +851,53 @@ final class EqualBrightnessSettingsViewController: NSViewController {
     return self.displayObjects[index]
   }
 
+  /// Returns the reference display followed by every target display in slider order.
+  /// 按滑块顺序返回参考显示器和全部目标显示器。
+  private func calibrationDisplays() -> [Display] {
+    ([self.referenceDisplay] + self.displayObjects).compactMap { $0 }
+  }
+
+  /// Finds the live slider associated with one physical display.
+  /// 查找与某台实际显示器关联的实时滑块。
+  private func slider(for display: Display) -> NSSlider? {
+    self.slidersByDisplayID[display.identifier]
+  }
+
+  /// Finds the physical display controlled by a slider event.
+  /// 根据滑块事件查找对应的实际显示器。
+  private func display(for slider: NSSlider) -> Display? {
+    self.sliderDisplays[ObjectIdentifier(slider)]
+  }
+
+  /// Returns a stable, distinct color for each target display.
+  /// 为每台目标显示器返回稳定且彼此区分的颜色。
+  private func color(for display: Display, targetIndex: Int) -> NSColor {
+    if let existingColor = self.displayColors[display.identifier] {
+      return existingColor
+    }
+    let color: NSColor
+    if targetIndex < self.targetDisplayColors.count {
+      color = self.targetDisplayColors[targetIndex]
+    } else {
+      // Golden-ratio hue spacing keeps additional displays visually distinct.
+      // 使用黄金比例间隔色相，让更多显示器仍保持视觉区分度。
+      let hue = CGFloat((Double(targetIndex) * 0.618_033_988_75).truncatingRemainder(dividingBy: 1))
+      color = NSColor(calibratedHue: hue, saturation: 0.72, brightness: 0.92, alpha: 1)
+    }
+    self.displayColors[display.identifier] = color
+    return color
+  }
+
   /// Updates slider labels and initial values using the actual display identities.
   /// 使用实际显示器名称更新滑块标签和初始值。
   private func refreshDisplayControls() {
-    let referenceName = self.referenceDisplay.map {
-      DisplayManager.shared.userFacingDisplayName(for: $0)
-    } ?? NSLocalizedString("Built-in Display", comment: "Fallback built-in display name")
-    let targetName = self.selectedDisplay().map {
-      let index = self.displayPopup.indexOfSelectedItem
-      return DisplayManager.shared.userFacingDisplayName(for: $0, fallbackIndex: max(index, 0))
-    } ?? self.displayNames.first ?? NSLocalizedString("External Display", comment: "Fallback external display name")
     let brightnessTitle = NSLocalizedString("Brightness", comment: "Display brightness label")
-    self.sourceBrightnessLabel.stringValue = "\(referenceName) \(brightnessTitle)"
-    self.targetBrightnessLabel.stringValue = "\(targetName) \(brightnessTitle)"
-    self.sourceSlider.doubleValue = self.referenceDisplay.map { self.currentBrightness(for: $0) } ?? 0.5
-    self.targetSlider.doubleValue = self.selectedDisplay().map { self.currentBrightness(for: $0) } ?? 0.5
+    for (index, display) in self.calibrationDisplays().enumerated() where index < self.liveSliderRows.count {
+      let name = DisplayManager.shared.userFacingDisplayName(for: display, fallbackIndex: index)
+      let row = self.liveSliderRows[index]
+      row.label.stringValue = "\(name) \(brightnessTitle)"
+      row.slider.doubleValue = self.currentBrightness(for: display)
+    }
     self.displayPopup.isEnabled = !self.displayObjects.isEmpty
     self.updateRemovePointButtonState()
   }
@@ -735,14 +959,16 @@ final class EqualBrightnessSettingsViewController: NSViewController {
     self.refreshGraph()
   }
 
-  /// Redraws the preview when either calibration slider changes.
-  /// 任一校准滑块变化时刷新预览图。
+  /// Applies any display slider immediately and redraws the preview.
+  /// 立即应用任意显示器滑块的值并刷新预览图。
   @objc private func sliderChanged(_ sender: NSSlider) {
-    if sender === self.sourceSlider, let referenceDisplay = self.referenceDisplay {
-      self.applyBrightness(self.sourceSlider.doubleValue, to: referenceDisplay)
-    } else if sender === self.targetSlider, let targetDisplay = self.selectedDisplay() {
-      self.applyBrightness(self.targetSlider.doubleValue, to: targetDisplay)
+    guard let display = self.display(for: sender) else {
+      return
     }
+    self.applyBrightness(sender.doubleValue, to: display)
+    // Manual changes leave the previously selected point so the next saved point reflects the sliders.
+    // 手动调整后取消旧的选中点，确保下一次保存记录当前滑块值。
+    self.selectedPointID = nil
     self.refreshGraph()
   }
 
@@ -752,10 +978,46 @@ final class EqualBrightnessSettingsViewController: NSViewController {
     _ = display.setDirectBrightness(Float(EqualBrightnessCurve.clamp(value)))
   }
 
+  /// Moves every live slider to the selected point and applies each value to its display.
+  /// 将所有实时滑块移动到选中参考点，并把对应值写入每台显示器。
+  private func applySelectedPointToAllDisplays() {
+    guard let selectedPointID = self.selectedPointID,
+          let selectedPoint = self.points.first(where: { $0.id == selectedPointID }) else {
+      return
+    }
+    let selectedTarget = self.selectedDisplay()
+    let sourceValue = selectedPoint.sourceValue
+    for display in self.calibrationDisplays() {
+      let value: Double
+      if display == self.referenceDisplay {
+        value = sourceValue
+      } else if display == selectedTarget {
+        value = selectedPoint.targetValue
+      } else if let savedCurve = EqualBrightnessSettingsStore.shared.curve(for: display) {
+        value = savedCurve.value(at: sourceValue)
+      } else {
+        // An uncalibrated target follows the reference value until it has its own curve.
+        // 尚未校准的目标显示器在拥有独立曲线前跟随参考亮度。
+        value = sourceValue
+      }
+      guard let slider = self.slider(for: display) else {
+        continue
+      }
+      slider.doubleValue = EqualBrightnessCurve.clamp(value)
+      self.applyBrightness(value, to: display)
+    }
+  }
+
   /// Adds a reference point from the current pair of calibration sliders.
-  /// 根据当前两个校准滑块的值添加一个参考点。
+  /// 根据当前参考显示器和选中目标显示器的滑块值添加一个参考点。
   @objc private func addReferencePoint(_: NSButton) {
-    let point = EqualBrightnessCalibrationPoint(sourceValue: self.sourceSlider.doubleValue, targetValue: self.targetSlider.doubleValue)
+    guard let referenceDisplay = self.referenceDisplay,
+          let targetDisplay = self.selectedDisplay(),
+          let sourceSlider = self.slider(for: referenceDisplay),
+          let targetSlider = self.slider(for: targetDisplay) else {
+      return
+    }
+    let point = EqualBrightnessCalibrationPoint(sourceValue: sourceSlider.doubleValue, targetValue: targetSlider.doubleValue)
     let tolerance = 0.000_001
     if let index = self.points.firstIndex(where: { abs($0.sourceValue - point.sourceValue) <= tolerance }) {
       if self.isFixedEndpoint(self.points[index]) {
@@ -819,9 +1081,9 @@ final class EqualBrightnessSettingsViewController: NSViewController {
         isReference: true
       )
     ]
-    let palette: [NSColor] = [.systemOrange, .systemGreen, .systemPurple, .systemRed]
     for (index, display) in self.displayObjects.enumerated() {
       let name = DisplayManager.shared.userFacingDisplayName(for: display, fallbackIndex: index)
+      let displayColor = self.color(for: display, targetIndex: index)
       let curve: EqualBrightnessCurve
       if index == self.displayPopup.indexOfSelectedItem {
         curve = EqualBrightnessCurve(kind: self.curveKind, points: self.points)
@@ -833,7 +1095,7 @@ final class EqualBrightnessSettingsViewController: NSViewController {
       curves.append(
         EqualBrightnessGraphCurve(
           title: name,
-          color: palette[index % palette.count],
+          color: displayColor,
           evaluator: { curve.value(at: $0) },
           isReference: false
         )
@@ -842,14 +1104,25 @@ final class EqualBrightnessSettingsViewController: NSViewController {
     self.graphView.curves = curves
     self.graphView.points = self.points
     self.graphView.selectedPointID = self.selectedPointID
-    self.updateRemovePointButtonState()
-    if self.points.isEmpty {
-      self.pointsSummary.stringValue = NSLocalizedString("No reference points yet.", comment: "Equal brightness empty point summary")
+    if let selectedDisplay = self.selectedDisplay() {
+      self.graphView.pointColor = self.color(for: selectedDisplay, targetIndex: self.displayPopup.indexOfSelectedItem)
     } else {
-      self.pointsSummary.stringValue = self.points.map {
+      self.graphView.pointColor = .systemOrange
+    }
+    self.updateRemovePointButtonState()
+    let pointSummary: String
+    if self.points.isEmpty {
+      pointSummary = NSLocalizedString("No reference points yet.", comment: "Equal brightness empty point summary")
+    } else {
+      pointSummary = self.points.map {
         String(format: "%.0f%% → %.0f%%", $0.sourceValue * 100, $0.targetValue * 100)
       }.joined(separator: "   ")
     }
+
+    // Reuse the visible point-summary control so the guidance has exactly the same typography and color.
+    // 复用已经可见的参考点摘要控件，确保提示使用完全相同的字体和颜色。
+    let instruction = NSLocalizedString("Equal brightness instructions", comment: "Equal brightness usage instructions")
+    self.pointsSummary.stringValue = "\(pointSummary)\n\(instruction)"
   }
 }
 
@@ -870,6 +1143,7 @@ final class EqualBrightnessSettingsWindowController: NSWindowController, NSWindo
       backing: .buffered,
       defer: false
     )
+    window.contentMinSize = EqualBrightnessSettingsLayout.minimumContentSize
     window.contentViewController = viewController
     window.title = NSLocalizedString("Equal Brightness Settings", comment: "Equal brightness window title")
     super.init(window: window)
@@ -897,6 +1171,15 @@ final class EqualBrightnessSettingsWindowController: NSWindowController, NSWindo
   func showSettings() {
     self.didFinish = false
     EqualBrightnessSyncCoordinator.shared.beginCalibrationSession()
+    if let pageView = self.window?.contentViewController?.view as? EqualBrightnessSettingsPageView,
+       let window = self.window {
+      let currentSize = window.contentView?.bounds.size ?? EqualBrightnessSettingsLayout.contentSize
+      let requiredHeight = max(EqualBrightnessSettingsLayout.minimumContentSize.height, pageView.requiredContentHeight)
+      window.contentMinSize = NSSize(width: EqualBrightnessSettingsLayout.minimumContentSize.width, height: requiredHeight)
+      if currentSize.height < requiredHeight {
+        window.setContentSize(NSSize(width: max(currentSize.width, EqualBrightnessSettingsLayout.contentSize.width), height: requiredHeight))
+      }
+    }
     self.window?.center()
     self.showWindow(nil)
     self.window?.makeKeyAndOrderFront(nil)

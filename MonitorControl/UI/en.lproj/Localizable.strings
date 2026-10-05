@@ -153,7 +153,7 @@
 
 /* Equal brightness settings */
 "Equal Brightness Settings" = "Equal Brightness Settings";
-"Equal brightness instructions" = "Adjust both sliders until the two displays look equally bright, then click “Add Reference Point” to record the pair.\nHow to use: select a target display first; moving either slider changes the real display immediately. Record several points around 0%, 25%, 50%, 75%, and 100%; the 0% and 100% endpoints stay fixed automatically. Choose a curve type and click “Save”; select another target display to calibrate it separately. After saving, brightness synchronization maps the reference display through each display’s curve.";
+"Equal brightness instructions" = "Each connected display has its own aligned live slider. Adjust the sliders until the displays look equally bright, then click “Add Reference Point” to record the selected target curve.\nHow to use: select a target display, drag any slider to change that real display immediately, and click a point on the graph to move every slider to its corresponding value and apply all brightness changes. Record several points around 0%, 25%, 50%, 75%, and 100%; the 0% and 100% endpoints stay fixed automatically. Choose a curve type and click “Save”; select another target display to calibrate it separately. After saving, brightness synchronization maps the reference display through each display’s curve.";
 "Piecewise Linear" = "Piecewise Linear";
 "Smooth Monotone Cubic" = "Smooth Monotone Cubic";
 "Add Reference Point" = "Add Reference Point";

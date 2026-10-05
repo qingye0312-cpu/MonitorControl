@@ -9,6 +9,7 @@ struct EqualBrightnessDisplayIdentity: Codable, Hashable {
   let key: String
   let displayName: String
   private let legacyKeys: [String]
+  private let legacyDisplayIDPrefixes: [String]
 
   /// Returns the current key followed by keys written by older builds.
   /// 返回当前键以及旧版本写入的兼容键。
@@ -18,6 +19,12 @@ struct EqualBrightnessDisplayIdentity: Codable, Hashable {
       keys.append(legacyKey)
     }
     return keys
+  }
+
+  /// Checks whether a stored key belongs to this display's old ID-based namespace.
+  /// 检查持久化键是否属于当前显示器旧版的 ID 命名空间。
+  func matchesLegacyDisplayIDKey(_ storedKey: String) -> Bool {
+    self.legacyDisplayIDPrefixes.contains { storedKey.hasPrefix($0) }
   }
 
   /// Builds a stable identity from the current display metadata.
@@ -58,6 +65,7 @@ struct EqualBrightnessDisplayIdentity: Codable, Hashable {
     // Keep both the original serial/zero format and the display-ID fallback used by recent builds.
     // 同时兼容最初的序列号/0 格式，以及近期版本使用的显示器 ID 回退格式。
     var aliases: [String] = []
+    var displayIDPrefixes: [String] = []
     if isBuiltin {
       aliases.append("builtin-\(localizedName)-\(vendor)-\(model)")
       if hardwareName != localizedName, !hardwareName.isEmpty {
@@ -66,12 +74,15 @@ struct EqualBrightnessDisplayIdentity: Codable, Hashable {
     } else {
       aliases.append("external-\(localizedName)-\(vendor)-\(model)-\(serial)")
       aliases.append("external-\(localizedName)-\(vendor)-\(model)-display-\(display.identifier)")
+      displayIDPrefixes.append("external-\(localizedName)-\(vendor)-\(model)-display-")
       if hardwareName != localizedName, !hardwareName.isEmpty {
         aliases.append("external-\(hardwareName)-\(vendor)-\(model)-\(serial)")
         aliases.append("external-\(hardwareName)-\(vendor)-\(model)-display-\(display.identifier)")
+        displayIDPrefixes.append("external-\(hardwareName)-\(vendor)-\(model)-display-")
       }
     }
     self.legacyKeys = aliases
+    self.legacyDisplayIDPrefixes = displayIDPrefixes
   }
 
   /// Normalizes names without tying persistence to localization or whitespace.
@@ -156,6 +167,15 @@ final class EqualBrightnessSettingsStore {
         return curve
       }
     }
+
+    // Recover one pre-migration display-ID record after reconnecting; refuse ambiguous matches.
+    // 重连后尝试恢复一条旧显示器 ID 记录；存在歧义时拒绝匹配，避免串用曲线。
+    let legacyMatches = profile.curves.filter { key, _ in
+      identity.matchesLegacyDisplayIDKey(key)
+    }
+    if legacyMatches.count == 1 {
+      return legacyMatches.first?.value
+    }
     return nil
   }
 
@@ -171,7 +191,13 @@ final class EqualBrightnessSettingsStore {
     guard let configuredKey = self.load()?.referenceDisplayKey else {
       return false
     }
-    return EqualBrightnessDisplayIdentity(display: display).lookupKeys.contains(configuredKey)
+    let identity = EqualBrightnessDisplayIdentity(display: display)
+    if identity.lookupKeys.contains(configuredKey) {
+      return true
+    }
+    // Also recognize the old display-ID key so legacy profiles keep their reference display after reconnecting.
+    // 同时识别旧版显示器 ID 键，确保旧配置在重连后仍能找到参考显示器。
+    return identity.matchesLegacyDisplayIDKey(configuredKey)
   }
 
   /// Deletes all equal-brightness data and restores the disabled default.

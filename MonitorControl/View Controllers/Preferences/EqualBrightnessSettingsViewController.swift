@@ -795,10 +795,12 @@ final class EqualBrightnessSettingsWindowController: NSWindowController, NSWindo
     window.delegate = self
     viewController.onSave = { [weak self] points, curveKind in
       self?.didFinish = true
+      EqualBrightnessSyncCoordinator.shared.endCalibrationSession()
       self?.onSave?(points, curveKind)
     }
     viewController.onCancel = { [weak self] in
       self?.didFinish = true
+      EqualBrightnessSyncCoordinator.shared.endCalibrationSession()
       self?.onCancel?()
     }
   }

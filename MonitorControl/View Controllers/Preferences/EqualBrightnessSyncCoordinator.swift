@@ -42,7 +42,7 @@ final class EqualBrightnessSyncCoordinator {
     guard store.isEnabled(), store.isReferenceDisplay(sourceDisplay), targetDisplay != sourceDisplay else {
       return Self.clamp(targetDisplay.getBrightness() + delta)
     }
-    let curve = store.curve(for: targetDisplay) ?? EqualBrightnessCurve(kind: .linear, points: [])
+    let curve = store.curve(for: targetDisplay) ?? EqualBrightnessCurve(kind: .piecewiseLinear, points: [])
     let mappedValue = curve.value(at: Double(sourceDisplay.getBrightness()))
     return Float(EqualBrightnessCurve.clamp(mappedValue))
   }

@@ -21,8 +21,6 @@ struct EqualBrightnessCalibrationPoint: Codable, Identifiable {
 /// The first release keeps only monotonic curve choices that are safe to preview.
 /// 第一版只提供适合预览且不会产生越界的曲线类型。
 enum EqualBrightnessCurveKind: String, Codable, CaseIterable {
-  case linear
-  case power
   case piecewiseLinear
   case monotoneCubic
 
@@ -30,10 +28,6 @@ enum EqualBrightnessCurveKind: String, Codable, CaseIterable {
   /// 返回曲线选择器中显示的本地化标题。
   var localizedTitle: String {
     switch self {
-    case .linear:
-      return NSLocalizedString("Linear", comment: "Equal brightness curve type")
-    case .power:
-      return NSLocalizedString("Power", comment: "Equal brightness curve type")
     case .piecewiseLinear:
       return NSLocalizedString("Piecewise Linear", comment: "Equal brightness curve type")
     case .monotoneCubic:
@@ -47,7 +41,6 @@ enum EqualBrightnessCurveKind: String, Codable, CaseIterable {
 struct EqualBrightnessCurve: Codable {
   var kind: EqualBrightnessCurveKind
   var points: [EqualBrightnessCalibrationPoint]
-  var gamma: Double = 1
 
   /// Evaluates the curve at a normalized reference brightness value.
   /// 根据归一化的参考亮度计算曲线输出。
@@ -55,10 +48,6 @@ struct EqualBrightnessCurve: Codable {
     let source = Self.clamp(sourceValue)
     let result: Double
     switch self.kind {
-    case .linear:
-      result = source
-    case .power:
-      result = pow(source, max(0.25, min(4, self.gamma)))
     case .piecewiseLinear:
       result = self.piecewiseLinearValue(at: source)
     case .monotoneCubic:
@@ -747,7 +736,7 @@ final class EqualBrightnessSettingsViewController: NSViewController {
       } else if let savedCurve = EqualBrightnessSettingsStore.shared.curve(for: display) {
         curve = savedCurve
       } else {
-        curve = EqualBrightnessCurve(kind: .linear, points: [])
+        curve = EqualBrightnessCurve(kind: .piecewiseLinear, points: [])
       }
       curves.append(
         EqualBrightnessGraphCurve(

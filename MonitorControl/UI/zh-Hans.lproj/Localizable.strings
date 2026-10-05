@@ -155,8 +155,6 @@
 
 /* 等亮度设置 */
 "Equal Brightness Settings" = "等亮度设置";
-"Linear" = "线性";
-"Power" = "幂函数";
 "Piecewise Linear" = "分段线性";
 "Smooth Monotone Cubic" = "平滑单调曲线";
 "Add Reference Point" = "添加参考点";

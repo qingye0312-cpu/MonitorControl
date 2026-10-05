@@ -153,8 +153,6 @@
 
 /* Equal brightness settings */
 "Equal Brightness Settings" = "Equal Brightness Settings";
-"Linear" = "Linear";
-"Power" = "Power";
 "Piecewise Linear" = "Piecewise Linear";
 "Smooth Monotone Cubic" = "Smooth Monotone Cubic";
 "Add Reference Point" = "Add Reference Point";

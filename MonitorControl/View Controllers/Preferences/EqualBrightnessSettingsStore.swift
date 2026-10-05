@@ -3,32 +3,81 @@
 import Cocoa
 import Foundation
 
-/// Identifies a display with stable hardware values when available, or a local ID fallback.
-/// 优先使用稳定硬件字段标识显示器；硬件信息不足时回退到当前连接的显示器 ID。
+/// Identifies a display with stable hardware values and keeps legacy aliases for migration.
+/// 使用稳定硬件字段标识显示器，并保留旧键以便迁移已有配置。
 struct EqualBrightnessDisplayIdentity: Codable, Hashable {
   let key: String
   let displayName: String
+  private let legacyKeys: [String]
+
+  /// Returns the current key followed by keys written by older builds.
+  /// 返回当前键以及旧版本写入的兼容键。
+  var lookupKeys: [String] {
+    var keys = [self.key]
+    for legacyKey in self.legacyKeys where !keys.contains(legacyKey) {
+      keys.append(legacyKey)
+    }
+    return keys
+  }
 
   /// Builds a stable identity from the current display metadata.
   /// 根据当前显示器元数据构造稳定身份。
   init(display: Display) {
     self.displayName = display.name
-    let normalizedName = display.name.filter { !$0.isWhitespace }.lowercased()
+    let localizedName = Self.normalized(display.name)
+    let hardwareName = Self.normalized(DisplayManager.getDisplayRawNameByID(displayID: display.identifier))
+    let stableName = hardwareName.isEmpty ? localizedName : hardwareName
     let vendor = display.vendorNumber ?? 0
     let model = display.modelNumber ?? 0
-    if CGDisplayIsBuiltin(display.identifier) != 0 {
-      self.key = "builtin-\(normalizedName)-\(vendor)-\(model)"
-    } else if let serialNumber = display.serialNumber, serialNumber != 0 {
-      // Prefer the serial number so identical external displays keep separate curves.
-      // 优先使用序列号，确保同型号外接显示器分别保存曲线。
-      // Keep the original serialized shape for existing profiles.
-      // 保留旧版序列化格式，兼容已经保存的配置。
-      self.key = "external-\(normalizedName)-\(vendor)-\(model)-\(serialNumber)"
+    let serial = display.serialNumber ?? 0
+    let unit = CGDisplayUnitNumber(display.identifier)
+    let isBuiltin = CGDisplayIsBuiltin(display.identifier) != 0
+
+    if isBuiltin {
+      // Built-in displays are unique on a Mac, so vendor/model are sufficient when no serial exists.
+      // 内置屏幕在一台 Mac 上唯一；没有序列号时使用厂商/型号即可。
+      self.key = serial == 0 ? "builtin-\(vendor)-\(model)" : "builtin-\(vendor)-\(model)-serial-\(serial)"
+    } else if serial != 0 {
+      // Serial numbers keep identical external displays separate after reconnects.
+      // 序列号可让同型号外接显示器在重连后仍保持独立配置。
+      self.key = "external-\(vendor)-\(model)-serial-\(serial)"
+    } else if !stableName.isEmpty, unit != 0 {
+      // Unit number represents the physical display connection and survives display-ID reassignment.
+      // 显示单元号代表物理连接，显示器 ID 重新分配后通常仍保持不变。
+      self.key = "external-\(vendor)-\(model)-name-\(stableName)-unit-\(unit)"
+    } else if !stableName.isEmpty {
+      // Keep a metadata-only fallback when the system does not expose a unit number.
+      // 系统不提供显示单元号时，至少使用显示器元数据作为稳定回退。
+      self.key = "external-\(vendor)-\(model)-name-\(stableName)"
     } else {
-      // Fall back to the current display ID when hardware does not expose a serial number.
-      // 硬件不提供序列号时，回退到当前显示器 ID，避免同时连接的屏幕互相覆盖。
-      self.key = "external-\(normalizedName)-\(vendor)-\(model)-display-\(display.identifier)"
+      // A display ID is the last resort when no identifying metadata is available at all.
+      // 完全没有可识别元数据时，最后才回退到当前显示器 ID。
+      self.key = "external-display-\(display.identifier)"
     }
+
+    // Keep both the original serial/zero format and the display-ID fallback used by recent builds.
+    // 同时兼容最初的序列号/0 格式，以及近期版本使用的显示器 ID 回退格式。
+    var aliases: [String] = []
+    if isBuiltin {
+      aliases.append("builtin-\(localizedName)-\(vendor)-\(model)")
+      if hardwareName != localizedName, !hardwareName.isEmpty {
+        aliases.append("builtin-\(hardwareName)-\(vendor)-\(model)")
+      }
+    } else {
+      aliases.append("external-\(localizedName)-\(vendor)-\(model)-\(serial)")
+      aliases.append("external-\(localizedName)-\(vendor)-\(model)-display-\(display.identifier)")
+      if hardwareName != localizedName, !hardwareName.isEmpty {
+        aliases.append("external-\(hardwareName)-\(vendor)-\(model)-\(serial)")
+        aliases.append("external-\(hardwareName)-\(vendor)-\(model)-display-\(display.identifier)")
+      }
+    }
+    self.legacyKeys = aliases
+  }
+
+  /// Normalizes names without tying persistence to localization or whitespace.
+  /// 规范化名称，避免持久化结果依赖语言设置或空白字符。
+  private static func normalized(_ value: String) -> String {
+    value.filter { !$0.isWhitespace }.lowercased()
   }
 }
 
@@ -102,7 +151,12 @@ final class EqualBrightnessSettingsStore {
       return nil
     }
     let identity = EqualBrightnessDisplayIdentity(display: display)
-    return profile.curves[identity.key]
+    for key in identity.lookupKeys {
+      if let curve = profile.curves[key] {
+        return curve
+      }
+    }
+    return nil
   }
 
   /// Indicates whether a saved mapping should participate in runtime synchronization.
@@ -117,7 +171,7 @@ final class EqualBrightnessSettingsStore {
     guard let configuredKey = self.load()?.referenceDisplayKey else {
       return false
     }
-    return EqualBrightnessDisplayIdentity(display: display).key == configuredKey
+    return EqualBrightnessDisplayIdentity(display: display).lookupKeys.contains(configuredKey)
   }
 
   /// Deletes all equal-brightness data and restores the disabled default.

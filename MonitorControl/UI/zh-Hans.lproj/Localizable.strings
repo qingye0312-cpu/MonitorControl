@@ -158,8 +158,9 @@
 "Linear" = "线性";
 "Power" = "幂函数";
 "Piecewise Linear" = "分段线性";
+"Smooth Monotone Cubic" = "平滑单调曲线";
 "Add Reference Point" = "添加参考点";
-"Remove Last Point" = "删除最后一个点";
+"Delete Selected Point" = "删除选中参考点";
 "Adjust both sliders until the displays look equally bright, then record the point." = "调整两个滑块，直到两台显示器看起来亮度相同，然后记录该参考点。";
 "Reference display brightness" = "参考显示器亮度";
 "Target display brightness" = "目标显示器亮度";

@@ -156,8 +156,9 @@
 "Linear" = "Linear";
 "Power" = "Power";
 "Piecewise Linear" = "Piecewise Linear";
+"Smooth Monotone Cubic" = "Smooth Monotone Cubic";
 "Add Reference Point" = "Add Reference Point";
-"Remove Last Point" = "Remove Last Point";
+"Delete Selected Point" = "Delete Selected Point";
 "Adjust both sliders until the displays look equally bright, then record the point." = "Adjust both sliders until the displays look equally bright, then record the point.";
 "Reference display brightness" = "Reference display brightness";
 "Target display brightness" = "Target display brightness";

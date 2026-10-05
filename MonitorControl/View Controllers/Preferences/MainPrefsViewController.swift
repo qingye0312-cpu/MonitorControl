@@ -22,11 +22,14 @@ class MainPrefsViewController: NSViewController, SettingsPane {
   @IBOutlet var allowZeroSwBrightness: NSButton!
   @IBOutlet var combinedBrightness: NSButton!
   @IBOutlet var enableSmooth: NSButton!
-  @IBOutlet var enableBrightnessSync: NSButton!
+  @IBOutlet var enableBrightnessSync: NSButton?
+  @IBOutlet var enableBrightnessSyncControls: NSStackView?
   @IBOutlet var startupAction: NSPopUpButton!
   @IBOutlet var rowDoNothingStartupText: NSGridRow!
   @IBOutlet var rowWriteStartupText: NSGridRow!
   @IBOutlet var rowReadStartupText: NSGridRow!
+
+  private var equalBrightnessSettingsWindowController: EqualBrightnessSettingsWindowController?
 
   func updateGridLayout() {
     if self.startupAction.selectedTag() == StartupAction.doNothing.rawValue {
@@ -59,7 +62,8 @@ class MainPrefsViewController: NSViewController, SettingsPane {
     self.combinedBrightness.state = prefs.bool(forKey: PrefKey.disableCombinedBrightness.rawValue) ? .off : .on
     self.allowZeroSwBrightness.state = prefs.bool(forKey: PrefKey.allowZeroSwBrightness.rawValue) ? .on : .off
     self.enableSmooth.state = prefs.bool(forKey: PrefKey.disableSmoothBrightness.rawValue) ? .off : .on
-    self.enableBrightnessSync.state = prefs.bool(forKey: PrefKey.enableBrightnessSync.rawValue) ? .on : .off
+    let syncButton = self.enableBrightnessSync ?? self.enableBrightnessSyncControls?.arrangedSubviews.compactMap { $0 as? NSButton }.first
+    syncButton?.state = prefs.bool(forKey: PrefKey.enableBrightnessSync.rawValue) ? .on : .off
     self.startupAction.selectItem(withTag: prefs.integer(forKey: PrefKey.startupAction.rawValue))
     // Preload Display settings to some extent to properly set up size in orther that animation won't fail
     menuslidersPrefsVc?.view.layoutSubtreeIfNeeded()
@@ -138,6 +142,24 @@ class MainPrefsViewController: NSViewController, SettingsPane {
       prefs.set(false, forKey: PrefKey.enableBrightnessSync.rawValue)
     default: break
     }
+  }
+
+  /// Opens the function-based equal-brightness editor without changing legacy sync settings.
+  /// 打开函数化的等亮度编辑器，同时不改变原有同步设置。
+  @IBAction func equalBrightnessSettingsClicked(_: NSButton) {
+    if let existingController = self.equalBrightnessSettingsWindowController {
+      existingController.showSettings()
+      return
+    }
+    let controller = EqualBrightnessSettingsWindowController()
+    controller.onSave = { [weak self] _, _ in
+      self?.equalBrightnessSettingsWindowController = nil
+    }
+    controller.onCancel = { [weak self] in
+      self?.equalBrightnessSettingsWindowController = nil
+    }
+    self.equalBrightnessSettingsWindowController = controller
+    controller.showSettings()
   }
 
   @IBAction func startupAction(_ sender: NSPopUpButton) {

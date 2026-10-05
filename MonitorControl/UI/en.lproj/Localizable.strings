@@ -153,6 +153,7 @@
 
 /* Equal brightness settings */
 "Equal Brightness Settings" = "Equal Brightness Settings";
+"Equal brightness instructions" = "Calibrate perceived brightness across displays. Adjust both sliders until the screens look equally bright, then click “Add Reference Point”. Add several points and save; brightness synchronization will use the fitted curve.";
 "Piecewise Linear" = "Piecewise Linear";
 "Smooth Monotone Cubic" = "Smooth Monotone Cubic";
 "Add Reference Point" = "Add Reference Point";

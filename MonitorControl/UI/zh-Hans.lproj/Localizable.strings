@@ -155,6 +155,7 @@
 
 /* 等亮度设置 */
 "Equal Brightness Settings" = "等亮度设置";
+"Equal brightness instructions" = "用于校准不同显示器的体感亮度。调整两个滑块，直到画面看起来一样亮，然后点击“添加参考点”。添加多个参考点并保存，后续亮度同步会使用拟合曲线。";
 "Piecewise Linear" = "分段线性";
 "Smooth Monotone Cubic" = "平滑单调曲线";
 "Add Reference Point" = "添加参考点";

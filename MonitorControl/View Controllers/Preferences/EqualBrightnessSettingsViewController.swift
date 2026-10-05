@@ -404,6 +404,11 @@ final class EqualBrightnessSettingsViewController: NSViewController {
     let rootView = NSView(frame: NSRect(x: 0, y: 0, width: 760, height: 560))
     let titleLabel = NSTextField(labelWithString: NSLocalizedString("Equal Brightness Settings", comment: "Equal brightness window title"))
     titleLabel.font = NSFont.boldSystemFont(ofSize: 18)
+    let instructionLabel = NSTextField(labelWithString: NSLocalizedString("Equal brightness instructions", comment: "Equal brightness usage instructions"))
+    instructionLabel.textColor = .secondaryLabelColor
+    instructionLabel.lineBreakMode = .byWordWrapping
+    instructionLabel.maximumNumberOfLines = 0
+    instructionLabel.preferredMaxLayoutWidth = 680
 
     self.displayNames = self.loadDisplayNames()
     self.displayPopup.addItems(withTitles: self.displayNames)
@@ -473,7 +478,7 @@ final class EqualBrightnessSettingsViewController: NSViewController {
     footer.addArrangedSubview(cancelButton)
     footer.addArrangedSubview(saveButton)
 
-    let rootStack = NSStackView(views: [titleLabel, header, graphContainer, previewLabel, controls, self.pointsSummary, footer])
+    let rootStack = NSStackView(views: [titleLabel, instructionLabel, header, graphContainer, previewLabel, controls, self.pointsSummary, footer])
     rootStack.orientation = .vertical
     rootStack.alignment = .leading
     rootStack.spacing = 12
@@ -491,6 +496,7 @@ final class EqualBrightnessSettingsViewController: NSViewController {
       self.targetSlider.widthAnchor.constraint(greaterThanOrEqualToConstant: 260),
       footer.widthAnchor.constraint(equalTo: rootStack.widthAnchor, constant: -40),
       graphContainer.widthAnchor.constraint(equalTo: rootStack.widthAnchor, constant: -40),
+      instructionLabel.widthAnchor.constraint(equalTo: rootStack.widthAnchor, constant: -40),
       previewLabel.widthAnchor.constraint(equalTo: rootStack.widthAnchor, constant: -40),
       self.pointsSummary.widthAnchor.constraint(equalTo: rootStack.widthAnchor, constant: -40)
     ])

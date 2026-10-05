@@ -6,7 +6,7 @@ import os.log
 class SliderHandler {
   /// Controls the horizontal width of menu brightness and volume sliders, in points.
   /// 控制菜单亮度和音量滑块的水平宽度，单位为点。
-  private static let menuSliderWidth: CGFloat = 176
+  private static let menuSliderWidth: CGFloat = 180
 
   var slider: MCSlider?
   var view: NSView?

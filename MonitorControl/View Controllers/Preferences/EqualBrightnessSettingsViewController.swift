@@ -259,6 +259,7 @@ final class EqualBrightnessGraphView: NSView {
     dirtyRect.fill()
     let rect = self.plotRect()
     self.drawGrid(in: rect)
+    self.drawReferenceGuides(in: rect)
     for curve in self.curves {
       self.drawCurve(curve, in: rect)
     }
@@ -268,15 +269,21 @@ final class EqualBrightnessGraphView: NSView {
     }
   }
 
-  /// Selects the closest reference point when the graph is clicked.
-  /// 点击图表时选中距离最近的参考点。
+  /// Selects the closest reference point guide when the graph is clicked.
+  /// 点击图表时选中距离最近的参考点纵向引导线。
   override func mouseDown(with event: NSEvent) {
     let location = self.convert(event.locationInWindow, from: nil)
     let rect = self.plotRect()
-    let nearest = self.points
-      .map { point in (point, hypot(self.graphPoint(source: point.sourceValue, target: point.targetValue, in: rect).x - location.x, self.graphPoint(source: point.sourceValue, target: point.targetValue, in: rect).y - location.y)) }
-      .filter { $0.1 <= 12 }
-      .min { $0.1 < $1.1 }
+    guard rect.insetBy(dx: -12, dy: 0).contains(location) else {
+      return
+    }
+    let candidates: [(point: EqualBrightnessCalibrationPoint, distance: CGFloat)] = self.points.map { point in
+      let pointX = self.graphPoint(source: point.sourceValue, target: point.targetValue, in: rect).x
+      return (point: point, distance: abs(pointX - location.x))
+    }
+    let nearest = candidates
+      .filter { candidate in candidate.distance <= 12 }
+      .min { left, right in left.distance < right.distance }
     self.selectedPointID = nearest?.0.id
     self.onPointSelected?(self.selectedPointID)
   }
@@ -313,6 +320,22 @@ final class EqualBrightnessGraphView: NSView {
     axes.move(to: NSPoint(x: rect.minX, y: rect.minY))
     axes.line(to: NSPoint(x: rect.minX, y: rect.maxY))
     axes.stroke()
+  }
+
+  /// Draws one gray vertical guide for every reference point.
+  /// 为每个参考点绘制一条灰色纵向引导线。
+  private func drawReferenceGuides(in rect: NSRect) {
+    let guideColor = NSColor.systemGray.withAlphaComponent(0.6)
+    guideColor.setStroke()
+    for point in self.points {
+      let x = self.graphPoint(source: point.sourceValue, target: point.targetValue, in: rect).x
+      let guide = NSBezierPath()
+      guide.lineWidth = point.id == self.selectedPointID ? 1.5 : 1
+      guide.setLineDash([3, 3], count: 2, phase: 0)
+      guide.move(to: NSPoint(x: x, y: rect.minY))
+      guide.line(to: NSPoint(x: x, y: rect.maxY))
+      guide.stroke()
+    }
   }
 
   /// Samples one normalized curve and renders it as a smooth polyline.
@@ -729,6 +752,7 @@ final class EqualBrightnessSettingsViewController: NSViewController {
     self.graphView.onPointSelected = { [weak self] pointID in
       self?.selectedPointID = pointID
       self?.applySelectedPointToAllDisplays()
+      self?.refreshGraph()
       self?.updateRemovePointButtonState()
       self?.graphView.selectedPointID = pointID
     }
@@ -1122,7 +1146,9 @@ final class EqualBrightnessSettingsViewController: NSViewController {
     // Reuse the visible point-summary control so the guidance has exactly the same typography and color.
     // 复用已经可见的参考点摘要控件，确保提示使用完全相同的字体和颜色。
     let instruction = NSLocalizedString("Equal brightness instructions", comment: "Equal brightness usage instructions")
-    self.pointsSummary.stringValue = "\(pointSummary)\n\(instruction)"
+    // Leave one empty line between the point summary and the bilingual usage guide.
+    // 在参考点摘要和双语使用说明之间保留一个空行。
+    self.pointsSummary.stringValue = "\(pointSummary)\n\n\(instruction)"
   }
 }
 

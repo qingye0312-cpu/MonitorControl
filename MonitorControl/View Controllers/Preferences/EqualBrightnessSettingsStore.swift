@@ -3,8 +3,8 @@
 import Cocoa
 import Foundation
 
-/// Identifies a display with values that survive display-ID changes after reconnects.
-/// 使用在重新连接后仍然稳定的字段标识显示器。
+/// Identifies a display with stable hardware values when available, or a local ID fallback.
+/// 优先使用稳定硬件字段标识显示器；硬件信息不足时回退到当前连接的显示器 ID。
 struct EqualBrightnessDisplayIdentity: Codable, Hashable {
   let key: String
   let displayName: String
@@ -14,10 +14,20 @@ struct EqualBrightnessDisplayIdentity: Codable, Hashable {
   init(display: Display) {
     self.displayName = display.name
     let normalizedName = display.name.filter { !$0.isWhitespace }.lowercased()
+    let vendor = display.vendorNumber ?? 0
+    let model = display.modelNumber ?? 0
     if CGDisplayIsBuiltin(display.identifier) != 0 {
-      self.key = "builtin-\(normalizedName)-\(display.vendorNumber ?? 0)-\(display.modelNumber ?? 0)"
+      self.key = "builtin-\(normalizedName)-\(vendor)-\(model)"
+    } else if let serialNumber = display.serialNumber, serialNumber != 0 {
+      // Prefer the serial number so identical external displays keep separate curves.
+      // 优先使用序列号，确保同型号外接显示器分别保存曲线。
+      // Keep the original serialized shape for existing profiles.
+      // 保留旧版序列化格式，兼容已经保存的配置。
+      self.key = "external-\(normalizedName)-\(vendor)-\(model)-\(serialNumber)"
     } else {
-      self.key = "external-\(normalizedName)-\(display.vendorNumber ?? 0)-\(display.modelNumber ?? 0)-\(display.serialNumber ?? 0)"
+      // Fall back to the current display ID when hardware does not expose a serial number.
+      // 硬件不提供序列号时，回退到当前显示器 ID，避免同时连接的屏幕互相覆盖。
+      self.key = "external-\(normalizedName)-\(vendor)-\(model)-display-\(display.identifier)"
     }
   }
 }

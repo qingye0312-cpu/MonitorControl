@@ -195,6 +195,8 @@ class MenuHandler: NSMenu, NSMenuDelegate {
       addedSliderHandlers.append(self.setupMenuSliderHandler(command: .brightness, display: display, title: title))
     }
     if prefs.integer(forKey: PrefKey.multiSliders.rawValue) != MultiSliders.combine.rawValue {
+      // Reuse the same stable display naming helper used by the calibration editor.
+      // 菜单和校准编辑器复用同一套稳定显示器命名逻辑。
       let displayIndex = DisplayManager.shared.displays.firstIndex { $0.identifier == display.identifier } ?? 0
       let displayName = DisplayManager.shared.userFacingDisplayName(for: display, fallbackIndex: displayIndex)
       self.addDisplayMenuBlock(addedSliderHandlers: addedSliderHandlers, blockName: displayName, monitorSubMenu: monitorSubMenu, numOfDisplays: numOfDisplays, asSubMenu: asSubMenu)

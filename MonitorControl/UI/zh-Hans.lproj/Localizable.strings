@@ -155,14 +155,11 @@
 
 /* 等亮度设置 */
 "Equal Brightness Settings" = "等亮度设置";
-"Equal brightness instructions" = "用于校准不同显示器的体感亮度。调整两个滑块，直到画面看起来一样亮，然后点击“添加参考点”。添加多个参考点并保存，后续亮度同步会使用拟合曲线。";
+"Equal brightness instructions" = "调整两个滑块，直到两台显示器看起来亮度相同，然后点击“添加参考点”记录该参考点。\n使用方法：先选择要校准的目标显示器；拖动滑块时会立即调整实际显示器。建议在 0%、25%、50%、75% 和 100% 附近分别记录多个点，0% 和 100% 端点会自动固定。选择曲线类型后点击“保存”；切换其他目标显示器可以分别校准。保存后，开启亮度同步时会按每台显示器的曲线映射亮度。";
 "Piecewise Linear" = "分段线性";
 "Smooth Monotone Cubic" = "平滑单调曲线";
 "Add Reference Point" = "添加参考点";
 "Delete Selected Point" = "删除选中参考点";
-"Adjust both sliders until the displays look equally bright, then record the point." = "调整两个滑块，直到两台显示器看起来亮度相同，然后记录该参考点。";
-"Reference display brightness" = "参考显示器亮度";
-"Target display brightness" = "目标显示器亮度";
 "Curve type" = "曲线类型";
 "Cancel" = "取消";
 "Save" = "保存";

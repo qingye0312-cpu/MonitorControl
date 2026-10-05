@@ -22,8 +22,9 @@ class MainPrefsViewController: NSViewController, SettingsPane {
   @IBOutlet var allowZeroSwBrightness: NSButton!
   @IBOutlet var combinedBrightness: NSButton!
   @IBOutlet var enableSmooth: NSButton!
+  // Keep this outlet optional so an older storyboard cannot crash settings loading.
+  // 保留可选 outlet，避免旧 storyboard 缺少连接时导致设置页崩溃。
   @IBOutlet var enableBrightnessSync: NSButton?
-  @IBOutlet var enableBrightnessSyncControls: NSStackView?
   @IBOutlet var startupAction: NSPopUpButton!
   @IBOutlet var rowDoNothingStartupText: NSGridRow!
   @IBOutlet var rowWriteStartupText: NSGridRow!
@@ -62,8 +63,7 @@ class MainPrefsViewController: NSViewController, SettingsPane {
     self.combinedBrightness.state = prefs.bool(forKey: PrefKey.disableCombinedBrightness.rawValue) ? .off : .on
     self.allowZeroSwBrightness.state = prefs.bool(forKey: PrefKey.allowZeroSwBrightness.rawValue) ? .on : .off
     self.enableSmooth.state = prefs.bool(forKey: PrefKey.disableSmoothBrightness.rawValue) ? .off : .on
-    let syncButton = self.enableBrightnessSync ?? self.enableBrightnessSyncControls?.arrangedSubviews.compactMap { $0 as? NSButton }.first
-    syncButton?.state = prefs.bool(forKey: PrefKey.enableBrightnessSync.rawValue) ? .on : .off
+    self.populateBrightnessSyncSetting()
     self.startupAction.selectItem(withTag: prefs.integer(forKey: PrefKey.startupAction.rawValue))
     // Preload Display settings to some extent to properly set up size in orther that animation won't fail
     menuslidersPrefsVc?.view.layoutSubtreeIfNeeded()
@@ -71,6 +71,15 @@ class MainPrefsViewController: NSViewController, SettingsPane {
     displaysPrefsVc?.view.layoutSubtreeIfNeeded()
     aboutPrefsVc?.view.layoutSubtreeIfNeeded()
     self.updateGridLayout()
+  }
+
+  /// Applies the saved legacy synchronization preference when its storyboard outlet exists.
+  /// 当 storyboard outlet 存在时，应用已保存的旧版亮度同步偏好。
+  private func populateBrightnessSyncSetting() {
+    guard let syncButton = self.enableBrightnessSync else {
+      return
+    }
+    syncButton.state = prefs.bool(forKey: PrefKey.enableBrightnessSync.rawValue) ? .on : .off
   }
 
   @IBAction func startAtLoginClicked(_ sender: NSButton) {

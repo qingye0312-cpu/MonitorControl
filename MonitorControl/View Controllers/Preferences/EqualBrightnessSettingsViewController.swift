@@ -2,6 +2,8 @@
 
 import Cocoa
 
+// MARK: - Curve model / 曲线模型
+
 /// A manually calibrated reference pair between the Mac display and one target display.
 /// Mac 屏幕与目标显示器之间经过人工校准的一组参考点。
 struct EqualBrightnessCalibrationPoint: Codable, Identifiable {
@@ -201,6 +203,8 @@ struct EqualBrightnessCurve: Codable {
   }
 }
 
+// MARK: - Graph / 曲线图
+
 /// A sampled curve used by the graph view without coupling the graph to display hardware.
 /// 图表使用的采样曲线，避免图表直接依赖显示器硬件。
 struct EqualBrightnessGraphCurve {
@@ -376,6 +380,15 @@ final class EqualBrightnessGraphView: NSView {
   }
 }
 
+// MARK: - Settings editor / 设置编辑器
+
+/// Keeps the editor's content dimensions in one place so the view and window stay in sync.
+/// 集中管理编辑器内容尺寸，确保视图和窗口尺寸保持一致。
+private enum EqualBrightnessSettingsLayout {
+  static let contentSize = NSSize(width: 760, height: 720)
+  static let graphHeight: CGFloat = 300
+}
+
 /// Hosts the first functional equal-brightness editor window.
 /// 承载第一版可操作的等亮度设置窗口。
 final class EqualBrightnessSettingsViewController: NSViewController {
@@ -401,20 +414,41 @@ final class EqualBrightnessSettingsViewController: NSViewController {
   /// Builds the settings view hierarchy using AppKit controls and Auto Layout.
   /// 使用 AppKit 控件和自动布局创建设置窗口的视图层级。
   override func loadView() {
-    let rootView = NSView(frame: NSRect(x: 0, y: 0, width: 760, height: 560))
-    let titleLabel = NSTextField(labelWithString: NSLocalizedString("Equal Brightness Settings", comment: "Equal brightness window title"))
-    titleLabel.font = NSFont.boldSystemFont(ofSize: 18)
-    let instructionLabel = NSTextField(labelWithString: NSLocalizedString("Equal brightness instructions", comment: "Equal brightness usage instructions"))
-    instructionLabel.textColor = .secondaryLabelColor
-    instructionLabel.lineBreakMode = .byWordWrapping
-    instructionLabel.maximumNumberOfLines = 0
-    instructionLabel.preferredMaxLayoutWidth = 680
+    let rootView = NSView(frame: NSRect(origin: .zero, size: EqualBrightnessSettingsLayout.contentSize))
+    self.configureInteractiveControls()
 
+    let titleLabel = self.makeTitleLabel()
+    let instructionLabel = self.makeInstructionLabel()
+    let header = self.makeDisplayHeader()
+    let graphContainer = self.makeGraphContainer()
+    let controls = self.makeCalibrationControls()
+    let footer = self.makeFooter()
+    let rootStack = self.makeRootStack(views: [titleLabel, instructionLabel, header, graphContainer, controls, self.pointsSummary, footer])
+    rootView.addSubview(rootStack)
+    self.constrainRootStack(rootStack, in: rootView, titleLabel: titleLabel, instructionLabel: instructionLabel, header: header, graphContainer: graphContainer, footer: footer)
+
+    // Keep graph selection in the view controller so button state follows the selected point.
+    // 将图表选中状态交给视图控制器管理，使按钮状态随选中点更新。
+    self.graphView.onPointSelected = { [weak self] pointID in
+      self?.selectedPointID = pointID
+      self?.updateRemovePointButtonState()
+      self?.graphView.selectedPointID = pointID
+    }
+    self.view = rootView
+    self.loadWorkingCurveForSelectedDisplay()
+    self.refreshDisplayControls()
+  }
+
+  /// Configures all controls that send editing events to this view controller.
+  /// 配置所有向当前视图控制器发送编辑事件的控件。
+  private func configureInteractiveControls() {
     self.displayNames = self.loadDisplayNames()
+    self.displayPopup.removeAllItems()
     self.displayPopup.addItems(withTitles: self.displayNames)
     self.displayPopup.target = self
     self.displayPopup.action = #selector(self.displayChanged(_:))
 
+    self.curvePopup.removeAllItems()
     self.curvePopup.addItems(withTitles: EqualBrightnessCurveKind.allCases.map { $0.localizedTitle })
     self.curvePopup.selectItem(at: 0)
     self.curvePopup.target = self
@@ -425,18 +459,39 @@ final class EqualBrightnessSettingsViewController: NSViewController {
     self.targetSlider.target = self
     self.targetSlider.action = #selector(self.sliderChanged(_:))
 
-    let addPointButton = NSButton(title: NSLocalizedString("Add Reference Point", comment: "Equal brightness add point button"), target: self, action: #selector(self.addReferencePoint(_:)))
-    let removePointButton = NSButton(title: NSLocalizedString("Delete Selected Point", comment: "Equal brightness delete point button"), target: self, action: #selector(self.removeSelectedPoint(_:)))
-    self.removePointButton = removePointButton
-    let previewLabel = NSTextField(labelWithString: NSLocalizedString("Adjust both sliders until the displays look equally bright, then record the point.", comment: "Equal brightness calibration guidance"))
-    previewLabel.textColor = .secondaryLabelColor
-    previewLabel.lineBreakMode = .byWordWrapping
-
     self.pointsSummary.font = NSFont.monospacedDigitSystemFont(ofSize: NSFont.smallSystemFontSize, weight: .regular)
     self.pointsSummary.textColor = .secondaryLabelColor
     self.pointsSummary.lineBreakMode = .byWordWrapping
     self.pointsSummary.maximumNumberOfLines = 3
+  }
 
+  /// Creates the editor title shown above the usage instructions.
+  /// 创建显示在使用说明上方的编辑器标题。
+  private func makeTitleLabel() -> NSTextField {
+    let titleLabel = NSTextField(labelWithString: NSLocalizedString("Equal Brightness Settings", comment: "Equal brightness window title"))
+    titleLabel.font = NSFont.boldSystemFont(ofSize: 18)
+    titleLabel.setContentHuggingPriority(.required, for: .vertical)
+    titleLabel.setContentCompressionResistancePriority(.required, for: .vertical)
+    return titleLabel
+  }
+
+  /// Creates the detailed bilingual-ready usage label that stays at the top of the page.
+  /// 创建位于页面顶部的详细使用说明标签，并支持本地化双语内容。
+  private func makeInstructionLabel() -> NSTextField {
+    let instructionLabel = NSTextField(labelWithString: NSLocalizedString("Equal brightness instructions", comment: "Equal brightness usage instructions"))
+    instructionLabel.textColor = .secondaryLabelColor
+    instructionLabel.lineBreakMode = .byWordWrapping
+    instructionLabel.maximumNumberOfLines = 0
+    instructionLabel.usesSingleLineMode = false
+    instructionLabel.preferredMaxLayoutWidth = 680
+    instructionLabel.setContentHuggingPriority(.required, for: .vertical)
+    instructionLabel.setContentCompressionResistancePriority(.required, for: .vertical)
+    return instructionLabel
+  }
+
+  /// Embeds the graph view and gives it a stable height for readable calibration points.
+  /// 嵌入曲线图视图，并设置稳定高度以保证校准点清晰可读。
+  private func makeGraphContainer() -> NSView {
     let graphContainer = NSView(frame: .zero)
     graphContainer.addSubview(self.graphView)
     self.graphView.translatesAutoresizingMaskIntoConstraints = false
@@ -445,19 +500,38 @@ final class EqualBrightnessSettingsViewController: NSViewController {
       self.graphView.trailingAnchor.constraint(equalTo: graphContainer.trailingAnchor),
       self.graphView.topAnchor.constraint(equalTo: graphContainer.topAnchor),
       self.graphView.bottomAnchor.constraint(equalTo: graphContainer.bottomAnchor),
-      graphContainer.heightAnchor.constraint(equalToConstant: 300)
+      graphContainer.heightAnchor.constraint(equalToConstant: EqualBrightnessSettingsLayout.graphHeight)
     ])
+    return graphContainer
+  }
+
+  /// Creates the sliders, curve selector, and reference-point actions as one control group.
+  /// 将两个滑块、曲线选择器和参考点操作组合成一个控件组。
+  private func makeCalibrationControls() -> NSStackView {
+    let addPointButton = NSButton(title: NSLocalizedString("Add Reference Point", comment: "Equal brightness add point button"), target: self, action: #selector(self.addReferencePoint(_:)))
+    let removePointButton = NSButton(title: NSLocalizedString("Delete Selected Point", comment: "Equal brightness delete point button"), target: self, action: #selector(self.removeSelectedPoint(_:)))
+    self.removePointButton = removePointButton
+
+    let actionRow = NSStackView(views: [addPointButton, removePointButton])
+    actionRow.orientation = .horizontal
+    actionRow.alignment = .centerY
+    actionRow.spacing = 8
 
     let controls = NSStackView(views: [
       self.makeRow(labelView: self.sourceBrightnessLabel, control: self.sourceSlider),
       self.makeRow(labelView: self.targetBrightnessLabel, control: self.targetSlider),
       self.makeRow(label: NSLocalizedString("Curve type", comment: "Equal brightness curve selector label"), control: self.curvePopup),
-      NSStackView(views: [addPointButton, removePointButton])
+      actionRow
     ])
     controls.orientation = .vertical
     controls.alignment = .leading
     controls.spacing = 8
+    return controls
+  }
 
+  /// Creates the target-display selector row.
+  /// 创建目标显示器选择行。
+  private func makeDisplayHeader() -> NSStackView {
     let header = NSStackView(views: [
       NSTextField(labelWithString: NSLocalizedString("Target display", comment: "Equal brightness target display label")),
       self.displayPopup
@@ -465,7 +539,14 @@ final class EqualBrightnessSettingsViewController: NSViewController {
     header.orientation = .horizontal
     header.alignment = .centerY
     header.spacing = 8
+    header.setContentHuggingPriority(.required, for: .vertical)
+    header.setContentCompressionResistancePriority(.required, for: .vertical)
+    return header
+  }
 
+  /// Creates Save and Cancel actions and assigns their standard keyboard shortcuts.
+  /// 创建“保存”和“取消”操作，并设置标准键盘快捷键。
+  private func makeFooter() -> NSStackView {
     let footer = NSStackView()
     footer.orientation = .horizontal
     footer.alignment = .centerY
@@ -477,19 +558,33 @@ final class EqualBrightnessSettingsViewController: NSViewController {
     footer.addArrangedSubview(NSView())
     footer.addArrangedSubview(cancelButton)
     footer.addArrangedSubview(saveButton)
+    return footer
+  }
 
-    let rootStack = NSStackView(views: [titleLabel, instructionLabel, header, graphContainer, previewLabel, controls, self.pointsSummary, footer])
+  /// Creates the vertical page stack with consistent insets and spacing.
+  /// 创建带统一边距和间距的纵向页面栈。
+  private func makeRootStack(views: [NSView]) -> NSStackView {
+    let rootStack = NSStackView(views: views)
     rootStack.orientation = .vertical
     rootStack.alignment = .leading
+    rootStack.distribution = .fill
     rootStack.spacing = 12
     rootStack.edgeInsets = NSEdgeInsets(top: 20, left: 20, bottom: 20, right: 20)
     rootStack.translatesAutoresizingMaskIntoConstraints = false
-    rootView.addSubview(rootStack)
+    return rootStack
+  }
+
+  /// Pins the page stack and width constraints required by the AppKit controls.
+  /// 固定页面栈，并设置 AppKit 控件所需的宽度约束。
+  private func constrainRootStack(_ rootStack: NSStackView, in rootView: NSView, titleLabel: NSTextField, instructionLabel: NSTextField, header: NSStackView, graphContainer: NSView, footer: NSStackView) {
     NSLayoutConstraint.activate([
       rootStack.leadingAnchor.constraint(equalTo: rootView.leadingAnchor),
       rootStack.trailingAnchor.constraint(equalTo: rootView.trailingAnchor),
       rootStack.topAnchor.constraint(equalTo: rootView.topAnchor),
       rootStack.bottomAnchor.constraint(equalTo: rootView.bottomAnchor),
+      titleLabel.heightAnchor.constraint(greaterThanOrEqualToConstant: 24),
+      instructionLabel.heightAnchor.constraint(greaterThanOrEqualToConstant: 44),
+      header.heightAnchor.constraint(greaterThanOrEqualToConstant: 28),
       self.displayPopup.widthAnchor.constraint(greaterThanOrEqualToConstant: 240),
       self.curvePopup.widthAnchor.constraint(greaterThanOrEqualToConstant: 180),
       self.sourceSlider.widthAnchor.constraint(greaterThanOrEqualToConstant: 260),
@@ -497,17 +592,8 @@ final class EqualBrightnessSettingsViewController: NSViewController {
       footer.widthAnchor.constraint(equalTo: rootStack.widthAnchor, constant: -40),
       graphContainer.widthAnchor.constraint(equalTo: rootStack.widthAnchor, constant: -40),
       instructionLabel.widthAnchor.constraint(equalTo: rootStack.widthAnchor, constant: -40),
-      previewLabel.widthAnchor.constraint(equalTo: rootStack.widthAnchor, constant: -40),
       self.pointsSummary.widthAnchor.constraint(equalTo: rootStack.widthAnchor, constant: -40)
     ])
-    self.graphView.onPointSelected = { [weak self] pointID in
-      self?.selectedPointID = pointID
-      self?.updateRemovePointButtonState()
-      self?.graphView.selectedPointID = pointID
-    }
-    self.view = rootView
-    self.loadWorkingCurveForSelectedDisplay()
-    self.refreshDisplayControls()
   }
 
   /// Refreshes the graph after the view has been loaded.
@@ -779,7 +865,7 @@ final class EqualBrightnessSettingsWindowController: NSWindowController, NSWindo
   init() {
     let viewController = EqualBrightnessSettingsViewController()
     let window = NSWindow(
-      contentRect: NSRect(x: 0, y: 0, width: 760, height: 560),
+      contentRect: NSRect(origin: .zero, size: EqualBrightnessSettingsLayout.contentSize),
       styleMask: [.titled, .closable, .resizable],
       backing: .buffered,
       defer: false

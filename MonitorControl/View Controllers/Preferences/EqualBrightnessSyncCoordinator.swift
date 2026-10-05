@@ -7,13 +7,30 @@ import Foundation
 final class EqualBrightnessSyncCoordinator {
   static let shared = EqualBrightnessSyncCoordinator()
 
+  private(set) var isCalibrationActive = false
+
   /// Creates the process-wide coordinator used by the existing brightness job.
   /// 创建供现有亮度任务使用的进程级协调器。
   private init() {}
 
+  /// Temporarily pauses cross-display synchronization while calibration is edited.
+  /// 编辑校准曲线期间临时暂停显示器之间的亮度同步。
+  func beginCalibrationSession() {
+    self.isCalibrationActive = true
+  }
+
+  /// Resumes cross-display synchronization after the calibration window closes.
+  /// 等亮度窗口关闭后恢复显示器之间的亮度同步。
+  func endCalibrationSession() {
+    self.isCalibrationActive = false
+  }
+
   /// Allows only the configured reference display to start mapped synchronization.
   /// 只允许配置的参考显示器启动映射同步。
   func shouldPropagate(sourceDisplay: Display) -> Bool {
+    guard !self.isCalibrationActive else {
+      return false
+    }
     let store = EqualBrightnessSettingsStore.shared
     return !store.isEnabled() || store.isReferenceDisplay(sourceDisplay)
   }

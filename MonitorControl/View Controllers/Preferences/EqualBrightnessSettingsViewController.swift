@@ -813,6 +813,7 @@ final class EqualBrightnessSettingsWindowController: NSWindowController, NSWindo
   /// 显示窗口并激活应用，确保用户可以立即编辑。
   func showSettings() {
     self.didFinish = false
+    EqualBrightnessSyncCoordinator.shared.beginCalibrationSession()
     self.window?.center()
     self.showWindow(nil)
     self.window?.makeKeyAndOrderFront(nil)
@@ -822,6 +823,7 @@ final class EqualBrightnessSettingsWindowController: NSWindowController, NSWindo
   /// Treats a window-close button click as a cancellation when no explicit action ran.
   /// 如果用户直接关闭窗口且没有点击明确按钮，则按取消处理。
   func windowWillClose(_: Notification) {
+    EqualBrightnessSyncCoordinator.shared.endCalibrationSession()
     guard !self.didFinish else {
       return
     }

@@ -23,7 +23,6 @@
                                     <gridRow bottomPadding="-10" id="fZn-VF-HKh"/>
                                     <gridRow bottomPadding="-13" id="xKQ-LY-5il"/>
                                     <gridRow bottomPadding="-10" id="jHJ-o2-Y9H"/>
-                                    <gridRow bottomPadding="-13" id="q8E-4M-kT1"/>
                                     <gridRow bottomPadding="-13" id="DxT-oY-DIZ"/>
                                     <gridRow bottomPadding="-10" id="Xcd-Ny-zkH"/>
                                     <gridRow bottomPadding="-10" id="gGa-4U-s7D"/>
@@ -102,29 +101,31 @@
                                     </gridCell>
                                     <gridCell row="xKQ-LY-5il" column="eHC-Ur-UsS" id="5Ae-gB-MUt"/>
                                     <gridCell row="xKQ-LY-5il" column="64O-72-10l" id="Rzu-9I-Tog">
-                                        <button key="contentView" verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="DW6-ez-A8y">
-                                            <rect key="frame" x="218" y="344" width="472" height="18"/>
-                                            <buttonCell key="cell" type="check" title="Sync brightness changes from Built-in and Apple displays" bezelStyle="regularSquare" imagePosition="left" alignment="left" inset="2" id="0ca-DG-AgB">
-                                                <behavior key="behavior" changeContents="YES" doesNotDimImage="YES" lightByContents="YES"/>
-                                                <font key="font" metaFont="system"/>
-                                            </buttonCell>
-                                            <connections>
-                                                <action selector="enableBrightnessSync:" target="BGD-tY-Myx" id="Icj-yj-at8"/>
-                                            </connections>
-                                        </button>
-                                    </gridCell>
-                                    <gridCell row="q8E-4M-kT1" column="eHC-Ur-UsS" id="X8E-2q-3Lk"/>
-                                    <gridCell row="q8E-4M-kT1" column="64O-72-10l" xPlacement="leading" id="Y4P-5c-VsN">
-                                        <button key="contentView" verticalHuggingPriority="750" placeholderIntrinsicWidth="132" placeholderIntrinsicHeight="20" translatesAutoresizingMaskIntoConstraints="NO" id="Y7p-qL-8mN">
-                                            <rect key="frame" x="218" y="290" width="132" height="32"/>
-                                            <buttonCell key="cell" type="push" title="Equal Brightness Settings" bezelStyle="rounded" alignment="center" borderStyle="border" imageScaling="proportionallyDown" inset="2" id="K2x-9V-dsR">
-                                                <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
-                                                <font key="font" metaFont="system"/>
-                                            </buttonCell>
-                                            <connections>
-                                                <action selector="equalBrightnessSettingsClicked:" target="BGD-tY-Myx" id="X8q-7V-pLm"/>
-                                            </connections>
-                                        </button>
+                                        <stackView distribution="fill" orientation="horizontal" alignment="centerY" spacing="8" translatesAutoresizingMaskIntoConstraints="NO" id="Jm8-7Q-cqP">
+                                            <rect key="frame" x="218" y="344" width="472" height="32"/>
+                                            <subviews>
+                                                <button horizontalHuggingPriority="250" horizontalCompressionResistancePriority="250" verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="DW6-ez-A8y">
+                                                    <rect key="frame" x="0.0" y="7" width="332" height="18"/>
+                                                    <buttonCell key="cell" type="check" title="Sync brightness changes from Built-in and Apple displays" bezelStyle="regularSquare" imagePosition="left" alignment="left" inset="2" id="0ca-DG-AgB">
+                                                        <behavior key="behavior" changeContents="YES" doesNotDimImage="YES" lightByContents="YES"/>
+                                                        <font key="font" metaFont="system"/>
+                                                    </buttonCell>
+                                                    <connections>
+                                                        <action selector="enableBrightnessSync:" target="BGD-tY-Myx" id="Icj-yj-at8"/>
+                                                    </connections>
+                                                </button>
+                                                <button verticalHuggingPriority="750" placeholderIntrinsicWidth="132" placeholderIntrinsicHeight="20" translatesAutoresizingMaskIntoConstraints="NO" id="Y7p-qL-8mN">
+                                                    <rect key="frame" x="340" y="0.0" width="132" height="32"/>
+                                                    <buttonCell key="cell" type="push" title="Equal Brightness Settings" bezelStyle="rounded" alignment="center" borderStyle="border" imageScaling="proportionallyDown" inset="2" id="K2x-9V-dsR">
+                                                        <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
+                                                        <font key="font" metaFont="system"/>
+                                                    </buttonCell>
+                                                    <connections>
+                                                        <action selector="equalBrightnessSettingsClicked:" target="BGD-tY-Myx" id="X8q-7V-pLm"/>
+                                                    </connections>
+                                                </button>
+                                            </subviews>
+                                        </stackView>
                                     </gridCell>
                                     <gridCell row="jHJ-o2-Y9H" column="eHC-Ur-UsS" id="En7-LK-oWB"/>
                                     <gridCell row="jHJ-o2-Y9H" column="64O-72-10l" id="wYJ-EG-TWv">
